@@ -1,0 +1,155 @@
+import { Dimsam, DimsamToken } from "~/art/Dimsam";
+import * as C from "~/art/tiles/setC";
+import type { DimsamMood } from "~/art/Dimsam";
+import type { GameView, TileView } from "~/lib/game";
+import { propAt } from "~/lib/game";
+import { cx, gridPos } from "~/lib/format";
+import { Tile } from "./Tile";
+import { Dice } from "./Dice";
+
+function unitStart(c: number) {
+  return c === 1 ? 0 : 1.5 + (c - 2);
+}
+function unitWidth(c: number) {
+  return c === 1 || c === 11 ? 1.5 : 1;
+}
+/** Centre of a tile as % of the board. */
+export function tileCenter(index: number): { x: number; y: number } {
+  const p = gridPos(index);
+  return {
+    x: ((unitStart(p.col) + unitWidth(p.col) / 2) / 12) * 100,
+    y: ((unitStart(p.row) + unitWidth(p.row) / 2) / 12) * 100,
+  };
+}
+
+export function Board({
+  view,
+  displayPos,
+  hop,
+  mood,
+  dice,
+  rolling,
+  animate,
+  onTileClick,
+}: {
+  view: GameView;
+  displayPos: number[];
+  hop: number;
+  mood: DimsamMood;
+  dice: number[];
+  rolling: boolean;
+  animate: boolean;
+  onTileClick: (tile: TileView) => void;
+}) {
+  const me = view.players.find((p) => p.seat === view.me);
+  const current = view.players[view.game.turn];
+  return (
+    <div className="relative w-full aspect-square select-none">
+      <div
+        className="grid w-full h-full bg-cream-2 rounded-2xl border-2 border-cocoa/30 overflow-hidden shadow-[0_8px_0_rgba(107,74,43,0.12)]"
+        style={{ gridTemplateColumns: "1.5fr repeat(9, 1fr) 1.5fr", gridTemplateRows: "1.5fr repeat(9, 1fr) 1.5fr" }}
+      >
+        {view.tiles.map((tile) => {
+          const prop = propAt(view, tile.index);
+          const owner = prop ? view.players.find((p) => p.seat === prop.ownerSeat) : undefined;
+          return (
+            <Tile
+              key={tile.index}
+              tile={tile}
+              prop={prop}
+              owner={owner}
+              animate={animate}
+              highlight={view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
+              onClick={() => onTileClick(tile)}
+            />
+          );
+        })}
+
+        {/* centre */}
+        <div style={{ gridRow: "2 / 11", gridColumn: "2 / 11" }} className="relative flex flex-col items-center justify-between p-[4%] overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.07] pointer-events-none" aria-hidden>
+            <PawField />
+          </div>
+          <div className="text-center z-[1]">
+            <div className="font-bold text-cocoa text-[clamp(14px,3.2vw,30px)] leading-none tracking-tight">Dimsam Monopoly</div>
+            <div className="text-cocoa/60 text-[clamp(9px,1.6vw,13px)] mt-1">
+              {view.game.status === "playing" ? `ตาของ ${current?.name ?? ""}` : "จบเกมแล้ว"}
+            </div>
+          </div>
+          <div className="relative z-[1] w-[46%] max-w-[260px] aspect-square">
+            <Dimsam mood={mood} variant={me?.variant ?? "blue"} animate={animate} />
+          </div>
+          <div className="z-[1] flex items-end justify-between w-full gap-2">
+            <Pile count={view.game.treasureCount} label="หีบขนม">
+              <C.TileTreasure animate={false} />
+            </Pile>
+            <Dice values={dice} rolling={rolling} size={44} />
+            <Pile count={view.game.specialCount} label="ถุงของเล่น">
+              <C.TileToyBag animate={false} />
+            </Pile>
+          </div>
+        </div>
+      </div>
+
+      {/* pieces */}
+      {view.players.map((p) => {
+        const pos = displayPos[p.seat] ?? p.position;
+        const c = tileCenter(pos);
+        const other = view.players.find((o) => o.seat !== p.seat);
+        const shared = other && (displayPos[other.seat] ?? other.position) === pos;
+        const dx = shared ? (p.seat === 0 ? -1.4 : 1.4) : 0;
+        const dy = shared ? (p.seat === 0 ? -1.2 : 1.2) : 0;
+        return (
+          <div
+            key={p.seat}
+            className="absolute pointer-events-none z-[3]"
+            style={{
+              left: `${c.x + dx}%`,
+              top: `${c.y + dy}%`,
+              width: "5.6%",
+              maxWidth: 46,
+              transform: "translate(-50%, -60%)",
+              transition: "left 0.22s ease-in-out, top 0.22s ease-in-out",
+            }}
+          >
+            <div key={hop} className={cx("token-hop w-full aspect-square drop-shadow-[0_3px_0_rgba(0,0,0,0.25)]", p.bankrupt && "opacity-30 grayscale")}>
+              <DimsamToken variant={p.variant} animate={animate} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Pile({ children, count, label }: { children: React.ReactNode; count: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center w-[22%] max-w-[90px]">
+      <div className="relative w-full aspect-square">
+        <div className="absolute inset-0 translate-x-[4%] translate-y-[4%] rounded-lg bg-white border border-cocoa/30" />
+        <div className="absolute inset-0 translate-x-[2%] translate-y-[2%] rounded-lg bg-white border border-cocoa/30" />
+        <div className="absolute inset-0 rounded-lg bg-white border border-cocoa/40 overflow-hidden">{children}</div>
+      </div>
+      <span className="text-[clamp(8px,1.3vw,11px)] text-cocoa/60 mt-1">
+        {label} {count}
+      </span>
+    </div>
+  );
+}
+
+function PawField() {
+  const paws = Array.from({ length: 12 }, (_, i) => ({ x: (i * 37) % 100, y: (i * 53 + 20) % 100, r: (i * 47) % 360 }));
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+      {paws.map((p, i) => (
+        <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.r}) scale(0.5)`} fill="#6b4a2b">
+          <ellipse cx="0" cy="3" rx="4.5" ry="3.8" />
+          <circle cx="-4.6" cy="-2.5" r="1.7" />
+          <circle cx="-1.6" cy="-4.6" r="1.7" />
+          <circle cx="1.6" cy="-4.6" r="1.7" />
+          <circle cx="4.6" cy="-2.5" r="1.7" />
+        </g>
+      ))}
+    </svg>
+  );
+}

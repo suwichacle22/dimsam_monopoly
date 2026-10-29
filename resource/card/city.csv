@@ -1,0 +1,59 @@
+index,name,type,special event,main color,land price,home price,mortgage (ขายคืน),land fee ,1 home fee,2 home fee,3 home fee,4 home fee,landmark fee
+0,จุดเริ่มต้น,start point,if pass this point got 2000 baht,,,,,,,,,,
+1,อาณาจักรไดโนเสาร์,city,,purple,800,500,400,40,100,300,900,1600,2500
+2,หีบสมบัติ,treasure,draw treasure card,,,,,,,,,,
+3,ผจญภัยยุคหิน,city,,purple,800,500,400,40,500,600,1800,3200,4500
+4,"จ่ายค่า ซ่อมบำรุง
+1000",tax,pay 100 baht,,,,,,,,,,
+5,คอปเตอร์ไม้ไผ่,special item,"if have 
+1 special item pay 250
+2 special item pay 500
+3 special item pay 1000
+4 special item pay 2000",,2000,,1000,,,,,,
+6,คาวบอย,city,,blue,1000,500,500,60,300,900,2700,4000,5500
+7,กระเป๋าวิเศษ,special card,draw special card,,,,,,,,,,
+8,ทุ่งดอกทานตะวัน,city,,blue,1000,500,500,60,300,900,2700,4000,5500
+9,อาหรับราตรี,city,,blue,1200,500,600,80,400,100,300,4500,6000
+10,คุก (กลับบ้านพัก กินขนม),jail,if in here you need to roll for double (same number for dice) or pay 500 baht for get out and if not pay or roll can wait for 1 turn to get out,,,,,,,,,,
+11,ขั้วโลกเหนือ,city,,pink,1400,1000,700,100,500,1500,4500,6250,7500
+12,สถานี ยานทะลุมิติ,special city,,,1500,,750,,,,,,
+13,เมืองเวทมนตร์,city,,pink,1400,1000,700,100,500,1500,4500,6250,7500
+14,ทะเลทราย,city,,pink,1600,1000,800,120,600,1800,5000,7000,9000
+15,ไฟฉายย่อสวน,special item,"if have 
+1 special item pay 250
+2 special item pay 500
+3 special item pay 1000
+4 special item pay 2000",,2000,,1000,,,,,,
+16,อาณาจักรแมลง,city,,orange,1800,1000,900,140,700,2000,5500,7500,9500
+17,หีบสมบัติ,treasure,draw treasure card,,,,,,,,,,
+18,ผจญภัยโจรสลัด,city,,orange,1800,1000,900,140,700,2000,5500,7500,9500
+19,วิหารอาเธน่า,city,,orange,2000,1000,1000,160,800,2200,6000,8000,10000
+20,เที่ยวรอบโลก,special event,if in here you can go around the map that you are owner and can buy more property if pass start point got 2000 baht as normally do,,,,,,,,,,
+21,เกาะกลางทะเล,city,,red,2200,1500,1100,180,900,2500,7000,8750,10500
+22,กระเป๋าวิเศษ,special card,draw special card,,,,,,,,,,
+23,ตะลุยแดนวิหค,city,,red,2200,1500,1100,180,900,2500,7000,8750,10500
+24,มหาสมุทร,city,,red,2400,1500,1200,200,1000,3000,7500,9250,11000
+25,เรือดำน้ำ,special item,"if have 
+1 special item pay 250
+2 special item pay 500
+3 special item pay 1000
+4 special item pay 2000",,2000,,1000,,,,,,
+26,บ้านขนม,city,,yellow,2600,1500,1300,220,1100,3300,8000,9750,11500
+27,เมืองของเล่น,city,,yellow,2600,1500,1300,220,1100,3300,8000,9750,11500
+28,สถานีตำรวจสากล,special city,,,1500,,750,,,,,,
+29,เมืองใต้ดิน,city,,yellow,2800,1500,1400,240,1200,3600,8500,10250,12000
+30,กลับบ้านกินขนม,special event,if roll in here go back to jail,,,,,,,,,,
+31,เมืองยักษ์,city,,green,3000,2000,1500,260,1300,3900,9000,11000,12750
+32,อาณาจักรนางเงือก,city,,green,3200,2000,1600,260,1300,3900,9000,11000,12750
+33,หีบสมบัติ,treasure,draw treasure card,,,,,,,,,,
+34,ดาวหุ่นยนต์,city,,green,3500,2000,1750,280,1500,4500,10000,12000,14000
+35,บ่อวิเศษของผู้ตัดฝืน,special item,"if have 
+1 special item pay 250
+2 special item pay 500
+3 special item pay 1000
+4 special item pay 2000",,2000,,1000,,,,,,
+36,กระเป๋าวิเศษ,special event,draw special card,,,,,,,,,,
+37,อวกาศ,city,,deep blue,3500,2000,1750,350,1750,5000,11000,13000,150000
+38,"จ่ายค่า ผลิตของวิเศษ
+1000",tax,pay 100 baht,,,,,,,,,,
+39,โลกอนาคต,city,,deep blue,4000,2000,2000,500,2000,6000,14000,17000,20000

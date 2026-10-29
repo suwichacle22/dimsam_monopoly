@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #fff6e5;
+  --color-cream-2: #fdebc8;
+  --color-peach: #f7c59f;
+  --color-caramel: #e0a458;
+  --color-cocoa: #6b4a2b;
+  --color-cocoa-2: #4a3119;
+  --color-sky: #9ed8f5;
+  --color-grass: #a8d672;
+  --color-blush: #f7a1c4;
+  --color-berry: #d9487e;
+  --font-sans: "Mitr", "Noto Sans Thai", "Prompt", system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--color-cream);
+  color: var(--color-cocoa-2);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply rounded-2xl bg-caramel text-white font-semibold px-5 py-3 text-lg shadow-[0_4px_0_#b9803a] active:translate-y-[2px] active:shadow-[0_2px_0_#b9803a] transition disabled:opacity-40 disabled:shadow-none disabled:translate-y-0;
+  }
+  .btn-secondary {
+    @apply rounded-2xl bg-white text-cocoa font-semibold px-4 py-2 border-2 border-cocoa/20 shadow-[0_3px_0_rgba(107,74,43,0.2)] active:translate-y-[2px] active:shadow-none transition disabled:opacity-40;
+  }
+  .btn-danger {
+    @apply rounded-2xl bg-berry text-white font-semibold px-4 py-2 shadow-[0_3px_0_#a22d5a] active:translate-y-[2px] active:shadow-none transition disabled:opacity-40;
+  }
+  .card {
+    @apply bg-white rounded-3xl border-2 border-cocoa/15 shadow-[0_6px_0_rgba(107,74,43,0.12)];
+  }
+}
+
+@keyframes dice-tumble {
+  0% { transform: rotate(0deg) translateY(0) scale(1); }
+  25% { transform: rotate(140deg) translateY(-18px) scale(1.08); }
+  50% { transform: rotate(260deg) translateY(0) scale(0.96); }
+  75% { transform: rotate(400deg) translateY(-10px) scale(1.04); }
+  100% { transform: rotate(540deg) translateY(0) scale(1); }
+}
+.dice-tumble { animation: dice-tumble 0.9s cubic-bezier(.3,.7,.3,1) infinite; }
+
+@keyframes token-hop {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-9px) scale(1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+.token-hop { animation: token-hop 0.26s ease-out; }
+
+@keyframes pop-in {
+  0% { transform: translateY(12px) scale(0.92); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.pop-in { animation: pop-in 0.28s cubic-bezier(.2,.9,.3,1.2) both; }
+
+@keyframes glow-turn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224,164,88,0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(224,164,88,0.35); }
+}
+.glow-turn { animation: glow-turn 1.6s ease-in-out infinite; }
+
+@keyframes card-flip {
+  0% { transform: rotateY(90deg) scale(0.9); opacity: 0; }
+  100% { transform: rotateY(0) scale(1); opacity: 1; }
+}
+.card-flip { animation: card-flip 0.45s cubic-bezier(.2,.9,.3,1.1) both; transform-style: preserve-3d; }
+
+@keyframes money-float {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-40px); opacity: 0; }
+}
+.money-float { animation: money-float 1.4s ease-out both; }
+
+@layer components {
+  .input {
+    @apply rounded-xl border-2 border-cocoa/20 bg-white px-3 py-2 text-base focus:outline-none focus:border-caramel;
+  }
+}

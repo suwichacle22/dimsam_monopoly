@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dimsam Monopoly (mock-up)</title>
+<style>
+  :root {
+    --bg: #eaf3fb;
+    --board: #d8ecd4;
+    --tile: #f7fbf5;
+    --line: #2b2f36;
+    --text: #1f2328;
+    --muted: #5d6670;
+    --blue: #1f7ae0;       /* doraemon */
+    --blue-dark: #0f4f9c;
+    --red: #e23d3d;        /* doraemon collar */
+    --yellow: #f7c600;     /* bell */
+    --white: #ffffff;
+    --card: #ffffff;
+    --shadow: 0 2px 6px rgba(0,0,0,.08), 0 10px 24px rgba(0,0,0,.06);
+    --p1: #1f7ae0;   /* Nobita */
+    --p2: #e85c9a;   /* Shizuka */
+    /* property groups */
+    --g-brown: #8b5a2b; --g-lblue: #7fc7e8; --g-pink: #e36aa8; --g-orange: #f29a2e;
+    --g-red: #e23d3d; --g-yellow: #f2d13b; --g-green: #2f9e5b; --g-dblue: #1f4fa3;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button { font: inherit; cursor: pointer; }
+  .screen { display: none; min-height: 100dvh; }
+  .screen.on { display: block; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 14px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: var(--blue); color: #fff; }
+  .topbar .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .01em; }
+  .bell { width: 22px; height: 22px; border-radius: 50%; background: var(--yellow); border: 2px solid #b48c00; position: relative; }
+  .bell::after { content: ""; position: absolute; left: 9px; top: 10px; width: 4px; height: 8px; background: #b48c00; border-radius: 2px; }
+  .sync { font-size: .78rem; display: flex; align-items: center; gap: 6px; opacity: .95; }
+  .sync i { width: 8px; height: 8px; border-radius: 50%; background: #5ff58a; display: inline-block; box-shadow: 0 0 0 3px rgba(95,245,138,.25); }
+
+  /* ---------- login + lobby ---------- */
+  .center { min-height: calc(100dvh - 46px); display: grid; place-items: center; padding: 20px; }
+  .panel { width: min(420px, 100%); background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 24px; }
+  .panel h1 { margin: 0 0 4px; font-size: 1.5rem; }
+  .panel p { margin: 0 0 16px; color: var(--muted); }
+  .doraemon { width: 86px; height: 86px; border-radius: 50%; background: var(--blue); margin: 0 auto 14px; position: relative; border: 3px solid var(--blue-dark); }
+  .doraemon::before { content: ""; position: absolute; left: 13px; top: 24px; width: 56px; height: 48px; background: #fff; border-radius: 50% 50% 45% 45%; }
+  .doraemon::after { content: ""; position: absolute; left: 33px; top: 30px; width: 14px; height: 14px; background: var(--red); border-radius: 50%; }
+  input[type=text], input[type=password] { width: 100%; padding: 12px 14px; border: 2px solid #cfd8e3; border-radius: 12px; font-size: 1rem; background: #fff; }
+  input:focus { outline: 3px solid rgba(31,122,224,.35); border-color: var(--blue); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; border-radius: 12px; border: 0; background: var(--blue); color: #fff; font-weight: 700; width: 100%; margin-top: 12px; }
+  .btn.secondary { background: #e3ebf3; color: var(--text); }
+  .btn.red { background: var(--red); }
+  .btn.yellow { background: var(--yellow); color: #3b2f00; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .err { color: var(--red); font-size: .88rem; margin-top: 8px; min-height: 1.2em; }
+  .seat { display: flex; align-items: center; gap: 12px; padding: 12px; border: 2px solid #e1e8f0; border-radius: 14px; margin-bottom: 10px; background: #fff; }
+  .seat.taken { border-color: var(--blue); }
+  .seat .who { flex: 1; }
+  .seat .who b { display: block; }
+  .seat .who span { font-size: .82rem; color: var(--muted); }
+  .token { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; border: 3px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); flex: none; }
+  .token.p1 { background: var(--p1); } .token.p2 { background: var(--p2); }
+
+  /* ---------- game layout ---------- */
+  .game { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 900px) { .game { grid-template-columns: minmax(0, 620px) 1fr; align-items: start; } }
+
+  .viewas { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+  .viewas button { border: 1px solid #c9d4df; background: #fff; border-radius: 999px; padding: 4px 10px; font-size: .8rem; }
+  .viewas button.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  /* ---------- board ---------- */
+  .board { width: 100%; aspect-ratio: 1; display: grid; grid-template-columns: 1.5fr repeat(9, 1fr) 1.5fr; grid-template-rows: 1.5fr repeat(9, 1fr) 1.5fr; gap: 1px; background: var(--line); border: 2px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tile { background: var(--tile); position: relative; display: flex; flex-direction: column; font-size: clamp(6.5px, 1.5vw, 10px); line-height: 1.1; overflow: hidden; }
+  @media (min-width: 900px) { .tile { font-size: 9px; } }
+  .tile .band { height: 22%; flex: none; }
+  .tile .body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .tile .name { flex: 1; padding: 2px; text-align: center; display: grid; place-items: center; font-weight: 600; overflow-wrap: break-word; hyphens: auto; min-width: 0; }
+  .tile .price { font-size: .85em; color: var(--muted); text-align: center; padding-bottom: 2px; }
+  .tile.corner { background: #fff5cc; }
+  .tile.corner .name { font-weight: 800; font-size: 1.1em; }
+  .tile.special .name { font-weight: 500; }
+  .tile.cur { outline: 3px solid var(--yellow); outline-offset: -3px; z-index: 2; }
+  .tile .own { position: absolute; top: 1px; right: 1px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #fff; }
+  .tile .own.p1 { background: var(--p1); } .tile .own.p2 { background: var(--p2); }
+  .pieces { position: absolute; bottom: 2px; left: 2px; display: flex; gap: 2px; z-index: 3; }
+  .piece { width: 1.6em; height: 1.6em; min-width: 11px; min-height: 11px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.4); transition: transform .2s; }
+  .piece.p1 { background: var(--p1); } .piece.p2 { background: var(--p2); }
+
+  /* side tiles rotate the band */
+  .tile.left { flex-direction: row-reverse; } .tile.left .band { width: 22%; height: auto; }
+  .tile.right { flex-direction: row; } .tile.right .band { width: 22%; height: auto; }
+  .tile.top { flex-direction: column-reverse; }
+
+  .centre { grid-column: 2 / 11; grid-row: 2 / 11; background: var(--board); display: grid; place-items: center; text-align: center; padding: 8px; }
+  .centre .title { font-size: clamp(14px, 3.6vw, 34px); font-weight: 900; color: var(--blue-dark); letter-spacing: .02em; line-height: 1; }
+  .centre .title small { display: block; font-size: .42em; color: var(--muted); font-weight: 600; letter-spacing: .15em; margin-top: 4px; }
+  .dice { display: flex; gap: 10px; justify-content: center; margin: 8px 0; }
+  .die { --d: clamp(28px, 8vw, 54px); width: var(--d); height: var(--d); background: #fff; border-radius: 18%; border: 2px solid var(--line); display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); padding: calc(var(--d) * .14); gap: calc(var(--d) * .05); }
+  .die i { border-radius: 50%; background: var(--line); opacity: 0; }
+  .die.rolling { animation: tumble .5s ease-in-out; }
+  @keyframes tumble { 0%{transform:rotate(0) scale(1)} 50%{transform:rotate(180deg) scale(1.2)} 100%{transform:rotate(360deg) scale(1)} }
+  @media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
+
+  /* ---------- side panel ---------- */
+  .side { display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; }
+  .players { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pcard { border: 2px solid #e1e8f0; border-radius: 12px; padding: 8px 10px; display: flex; gap: 10px; align-items: center; }
+  .pcard.turn { border-color: var(--yellow); background: #fffbe8; }
+  .pcard .token { width: 30px; height: 30px; font-size: .85rem; }
+  .pcard b { display: block; font-size: .95rem; }
+  .pcard .cash { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--g-green); }
+  .pcard .you { font-size: .7rem; color: var(--muted); }
+  .turnline { font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .turnline span { font-weight: 500; color: var(--muted); font-size: .85rem; }
+  .landed { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; }
+  .landed .swatch { width: 10px; border-radius: 4px; flex: none; }
+  .landed b { display: block; }
+  .landed small { color: var(--muted); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .actions .btn { margin: 0; padding: 12px 10px; }
+  .actions .btn.wide { grid-column: 1 / -1; }
+  .waiting { text-align: center; color: var(--muted); padding: 10px; background: #f1f5f9; border-radius: 10px; margin-top: 8px; font-size: .9rem; }
+  .log { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; font-size: .86rem; }
+  .log li { padding: 5px 0; border-bottom: 1px dashed #e1e8f0; display: flex; gap: 8px; }
+  .log li time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  .log li.p1 { border-left: 3px solid var(--p1); padding-left: 8px; }
+  .log li.p2 { border-left: 3px solid var(--p2); padding-left: 8px; }
+  .owned { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chip { font-size: .72rem; padding: 2px 8px; border-radius: 999px; color: #fff; font-weight: 600; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--line); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: .9rem; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; }
+  .note { font-size: .78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: ROOM PASSWORD ============ -->
+<section class="screen on" id="s-login">
+  <div class="topbar"><div class="logo"><span class="bell"></span> Dimsam Monopoly</div></div>
+  <div class="center">
+    <div class="panel">
+      <div class="doraemon"></div>
+      <h1>Private room</h1>
+      <p>Only two people know this password.</p>
+      <input type="password" id="pw" placeholder="Room password" autocomplete="off">
+      <div class="err" id="pw-err"></div>
+      <button class="btn" id="pw-go">Enter</button>
+      <p class="note" style="margin-top:14px">Mock-up: the password is <code>dorayaki</code>. In the real app the browser sends it to Convex, which checks it against the secret you set there.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2: LOBBY ============ -->
+<section class="screen" id="s-lobby">
+  <div class="topbar"><div class="logo"><span class="bell"></span> Dimsam Monopoly</div><div class="sync"><i></i> connected</div></div>
+  <div class="center">
+    <div class="panel">
+      <h1>Pick your seat</h1>
+      <p>Each phone takes one seat. The other seat fills in live when she joins.</p>
+      <div class="seat" id="seat1"><div class="token p1">N</div><div class="who"><b>Nobita</b><span>free</span></div><button class="btn secondary" style="width:auto;margin:0" data-seat="0">Take</button></div>
+      <div class="seat" id="seat2"><div class="token p2">S</div><div class="who"><b>Shizuka</b><span>free</span></div><button class="btn secondary" style="width:auto;margin:0" data-seat="1">Take</button></div>
+      <button class="btn" id="start" disabled>Start game</button>
+      <p class="note" style="margin-top:12px">Mock-up: both seats are taken from this one screen. On real phones you'd each tap your own.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 3: GAME ============ -->
+<section class="screen" id="s-game">
+  <div class="topbar">
+    <div class="logo"><span class="bell"></span> Dimsam Monopoly</div>
+    <div class="sync"><i></i> synced</div>
+  </div>
+  <div class="wrap game">
+    <div>
+      <div class="viewas" style="margin-bottom:8px">
+        Viewing as:
+        <button class="on" data-view="0">Nobita's phone</button>
+        <button data-view="1">Shizuka's phone</button>
+        <span class="note">(switch to see what the other phone shows)</span>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="players" id="players"></div>
+      </div>
+
+      <div class="card">
+        <div class="turnline" id="turnline"></div>
+        <div class="landed" id="landed"></div>
+        <div id="controls"></div>
+      </div>
+
+      <div class="card">
+        <b style="font-size:.9rem">Game log</b>
+        <ul class="log" id="log"></ul>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+</section>
+
+<script>
+/* ---------------- board data (would be board.ts, shared by frontend + Convex) ---------------- */
+const G = { brown:'var(--g-brown)', lblue:'var(--g-lblue)', pink:'var(--g-pink)', orange:'var(--g-orange)', red:'var(--g-red)', yellow:'var(--g-yellow)', green:'var(--g-green)', dblue:'var(--g-dblue)', rail:'#444', util:'#8a8a8a' };
+const BOARD = [
+  {n:'GO', t:'corner'},
+  {n:"Nobita's Room", g:'brown', p:60, r:4},
+  {n:'Dorayaki Box', t:'chest'},
+  {n:"Nobita's Garden", g:'brown', p:60, r:4},
+  {n:'Pocket Money Tax', t:'tax', p:200},
+  {n:'Anywhere Door', g:'rail', p:200, r:25},
+  {n:'Empty Lot (Pipes)', g:'lblue', p:100, r:6},
+  {n:'Gadget Card', t:'chance'},
+  {n:"Shizuka's House", g:'lblue', p:100, r:6},
+  {n:"Gian's Shop", g:'lblue', p:120, r:8},
+  {n:"Gian's Concert (Jail)", t:'corner'},
+  {n:"Suneo's House", g:'pink', p:140, r:10},
+  {n:'Memory Bread Bakery', g:'util', p:150, r:20},
+  {n:'School', g:'pink', p:140, r:10},
+  {n:"Dekisugi's House", g:'pink', p:160, r:12},
+  {n:'Take-copter', g:'rail', p:200, r:25},
+  {n:'Backyard Mountain', g:'orange', p:180, r:14},
+  {n:'Dorayaki Box', t:'chest'},
+  {n:'Riverbank', g:'orange', p:180, r:14},
+  {n:'Neighborhood Park', g:'orange', p:200, r:16},
+  {n:'Nap Time (Free)', t:'corner'},
+  {n:'Shopping Street', g:'red', p:220, r:18},
+  {n:'Gadget Card', t:'chance'},
+  {n:'Dorayaki Shop', g:'red', p:220, r:18},
+  {n:'Cinema', g:'red', p:240, r:20},
+  {n:'Time Machine', g:'rail', p:200, r:25},
+  {n:'Beach', g:'yellow', p:260, r:22},
+  {n:'Dinosaur Island', g:'yellow', p:260, r:22},
+  {n:'Small Light Lab', g:'util', p:150, r:20},
+  {n:'Tokyo Tower', g:'yellow', p:280, r:24},
+  {n:'Go to Concert', t:'corner'},
+  {n:'Cloud Kingdom', g:'green', p:300, r:26},
+  {n:'Undersea Castle', g:'green', p:300, r:26},
+  {n:'Dorayaki Box', t:'chest'},
+  {n:'Magic World', g:'green', p:320, r:28},
+  {n:'Gulliver Tunnel', g:'rail', p:200, r:25},
+  {n:'Gadget Card', t:'chance'},
+  {n:'22nd Century', g:'dblue', p:350, r:35},
+  {n:'Robot Tax', t:'tax', p:100},
+  {n:"Doraemon's Pocket", g:'dblue', p:400, r:50},
+];
+const CHANCE = [
+  ['Doraemon lends you the Take-copter. Advance to Anywhere Door.', s=>{ moveTo(s,5,true); }],
+  ['You found 100 yen in the lot. +100', s=>{ s.players[s.turn].cash += 100; }],
+  ['Gian makes you buy his album. -50', s=>{ s.players[s.turn].cash -= 50; }],
+  ['Time Machine malfunction! Go back 3 spaces.', s=>{ s.players[s.turn].pos = (s.players[s.turn].pos + 37) % 40; }],
+  ['Memory Bread exam bonus. +150', s=>{ s.players[s.turn].cash += 150; }],
+];
+const CHEST = [
+  ['Mom gives extra pocket money. +100', s=>{ s.players[s.turn].cash += 100; }],
+  ['Broke a window playing baseball. -80', s=>{ s.players[s.turn].cash -= 80; }],
+  ['Dorayaki party! Everyone pays you 50.', s=>{ s.players.forEach((p,i)=>{ if(i!==s.turn){p.cash-=50; s.players[s.turn].cash+=50;} }); }],
+  ['Fell asleep in class. Lose your next roll (just kidding). +0', s=>{}],
+];
+
+/* ---------------- fake "server" state (would live in Convex) ---------------- */
+let S = null;
+let view = 0;      // which phone we're pretending to be
+let seats = [false, false];
+
+function newGame() {
+  return {
+    players: [ {name:'Nobita', cash:1500, pos:0}, {name:'Shizuka', cash:1500, pos:0} ],
+    owners: {},     // tileIndex -> playerIdx
+    turn: 0, phase: 'roll', dice: [1,1], log: [], landedMsg: ''
+  };
+}
+function addLog(s, text, who) { s.log.unshift({ t: new Date(), text, who }); }
+
+/* ---- the "mutations" ---- */
+function rollDice(s) {
+  if (s.phase !== 'roll') return;
+  const d = [1+Math.floor(Math.random()*6), 1+Math.floor(Math.random()*6)];
+  s.dice = d;
+  addLog(s, `${s.players[s.turn].name} rolled ${d[0]} + ${d[1]} = ${d[0]+d[1]}`, s.turn);
+  moveTo(s, (s.players[s.turn].pos + d[0] + d[1]) % 40, s.players[s.turn].pos + d[0] + d[1] >= 40);
+  land(s);
+}
+function moveTo(s, idx, passedGo) {
+  const p = s.players[s.turn];
+  p.pos = idx;
+  if (passedGo && idx !== 0) { p.cash += 200; addLog(s, `${p.name} passed GO, +200`, s.turn); }
+  if (idx === 0) { p.cash += 200; addLog(s, `${p.name} landed on GO, +200`, s.turn); }
+}
+function land(s) {
+  const p = s.players[s.turn];
+  const tile = BOARD[p.pos];
+  s.phase = 'end';
+  s.landedMsg = '';
+  if (tile.g) {
+    const owner = s.owners[p.pos];
+    if (owner === undefined) { s.phase = 'buy'; s.landedMsg = `Unowned. Buy for ${tile.p}?`; }
+    else if (owner === s.turn) { s.landedMsg = 'You own this one.'; }
+    else {
+      const o = s.players[owner];
+      p.cash -= tile.r; o.cash += tile.r;
+      s.landedMsg = `Owned by ${o.name}. Paid rent ${tile.r}.`;
+      addLog(s, `${p.name} paid ${tile.r} rent to ${o.name}`, s.turn);
+    }
+  } else if (tile.t === 'tax') {
+    p.cash -= tile.p; s.landedMsg = `Paid ${tile.p} tax.`; addLog(s, `${p.name} paid ${tile.p} tax`, s.turn);
+  } else if (tile.t === 'chance' || tile.t === 'chest') {
+    const deck = tile.t === 'chance' ? CHANCE : CHEST;
+    const [text, fn] = deck[Math.floor(Math.random()*deck.length)];
+    fn(s); s.landedMsg = text; addLog(s, `${p.name}: ${text}`, s.turn);
+  } else if (p.pos === 30) {
+    p.pos = 10; s.landedMsg = "Dragged to Gian's concert (jail).";
+    addLog(s, `${p.name} was sent to Gian's concert`, s.turn);
+  } else if (p.pos === 20) {
+    s.landedMsg = 'Nap time. Nothing happens.';
+  } else if (p.pos === 10) {
+    s.landedMsg = 'Just visiting the concert.';
+  }
+}
+function buyProperty(s) {
+  if (s.phase !== 'buy') return;
+  const p = s.players[s.turn]; const tile = BOARD[p.pos];
+  if (p.cash < tile.p) { toast('Not enough cash'); return; }
+  p.cash -= tile.p; s.owners[p.pos] = s.turn; s.phase = 'end';
+  s.landedMsg = `You bought ${tile.n}.`;
+  addLog(s, `${p.name} bought ${tile.n} for ${tile.p}`, s.turn);
+}
+function skipBuy(s) { if (s.phase === 'buy') { s.phase = 'end'; s.landedMsg = 'Passed on buying.'; } }
+function endTurn(s) {
+  if (s.phase !== 'end') return;
+  s.turn = (s.turn + 1) % 2; s.phase = 'roll'; s.landedMsg = '';
+  addLog(s, `${s.players[s.turn].name}'s turn`, s.turn);
+}
+
+/* ---------------- rendering ("React" part) ---------------- */
+const $ = id => document.getElementById(id);
+function show(id) { document.querySelectorAll('.screen').forEach(e=>e.classList.remove('on')); $(id).classList.add('on'); }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 1800); }
+
+function gridPos(i) {
+  if (i <= 10) return { r: 11, c: 11 - i, side: 'bottom' };
+  if (i <= 20) return { r: 11 - (i - 10), c: 1, side: 'left' };
+  if (i <= 30) return { r: 1, c: 1 + (i - 20), side: 'top' };
+  return { r: 1 + (i - 30), c: 11, side: 'right' };
+}
+function buildBoard() {
+  const b = $('board'); b.innerHTML = '';
+  BOARD.forEach((t, i) => {
+    const g = gridPos(i);
+    const el = document.createElement('div');
+    el.className = 'tile ' + g.side + (t.t === 'corner' ? ' corner' : '') + (t.t && t.t !== 'corner' ? ' special' : '');
+    el.style.gridRow = g.r; el.style.gridColumn = g.c; el.dataset.i = i;
+    let html = '';
+    if (t.g) html += `<div class="band" style="background:${G[t.g]}"></div>`;
+    html += `<div class="body"><div class="name">${t.n}</div>${t.p && t.g ? `<div class="price">${t.p}</div>` : ''}</div>`;
+    html += `<div class="own"></div><div class="pieces"></div>`;
+    el.innerHTML = html;
+    el.title = t.n;
+    b.appendChild(el);
+  });
+  const c = document.createElement('div');
+  c.className = 'centre';
+  c.innerHTML = `<div><div class="title">DORAEMON<small>MONOPOLY</small></div><div class="dice" id="dice"></div><div class="note" id="centre-note"></div></div>`;
+  b.appendChild(c);
+}
+const PIPS = { 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] };
+function renderDice(anim) {
+  $('dice').innerHTML = S.dice.map(v => `<div class="die${anim?' rolling':''}">${[...Array(9)].map((_,k)=>`<i style="opacity:${PIPS[v].includes(k)?1:0}"></i>`).join('')}</div>`).join('');
+}
+function render(anim) {
+  // tiles
+  document.querySelectorAll('.tile').forEach(el => {
+    const i = +el.dataset.i;
+    const own = el.querySelector('.own');
+    own.className = 'own' + (S.owners[i] !== undefined ? ' p' + (S.owners[i]+1) : '');
+    own.style.display = S.owners[i] !== undefined ? 'block' : 'none';
+    el.querySelector('.pieces').innerHTML = S.players.map((p,k)=> p.pos===i ? `<div class="piece p${k+1}" title="${p.name}"></div>` : '').join('');
+    el.classList.toggle('cur', S.players[S.turn].pos === i);
+  });
+  renderDice(anim);
+  $('centre-note').textContent = `${S.players[S.turn].name} to ${S.phase === 'roll' ? 'roll' : S.phase === 'buy' ? 'decide' : 'end turn'}`;
+
+  // players
+  $('players').innerHTML = S.players.map((p,k)=>`
+    <div class="pcard${S.turn===k?' turn':''}">
+      <div class="token p${k+1}">${p.name[0]}</div>
+      <div><b>${p.name}</b><div class="cash">¥${p.cash}</div>
+        <div class="owned">${Object.entries(S.owners).filter(([,o])=>o===k).map(([i])=>`<span class="chip" style="background:${G[BOARD[i].g]}">${BOARD[i].n.split(' ')[0]}</span>`).join('')}</div>
+        ${view===k?'<div class="you">this phone</div>':''}
+      </div>
+    </div>`).join('');
+
+  // turn + landed
+  const me = view === S.turn;
+  const p = S.players[S.turn]; const tile = BOARD[p.pos];
+  $('turnline').innerHTML = `${me ? 'Your turn' : p.name + "'s turn"} <span>${tile.n}</span>`;
+  $('landed').innerHTML = `<div class="swatch" style="background:${tile.g ? G[tile.g] : '#ccc'}"></div><div><b>${tile.n}</b><small>${S.landedMsg || (tile.g ? `Price ${tile.p} · Rent ${tile.r}` : '')}</small></div>`;
+
+  // controls (only the active phone gets buttons)
+  let c = '';
+  if (!me) c = `<div class="waiting">Waiting for ${p.name}…<br><span class="note">${p.name}'s screen has the buttons. This one updates the instant they tap.</span></div>`;
+  else if (S.phase === 'roll') c = `<div class="actions"><button class="btn red wide" onclick="act('roll')">🎲 Roll dice</button></div>`;
+  else if (S.phase === 'buy') c = `<div class="actions"><button class="btn" onclick="act('buy')">Buy ¥${tile.p}</button><button class="btn secondary" onclick="act('skip')">No thanks</button></div>`;
+  else c = `<div class="actions"><button class="btn yellow wide" onclick="act('end')">End turn</button></div>`;
+  $('controls').innerHTML = c;
+
+  // log
+  $('log').innerHTML = S.log.slice(0,30).map(l=>`<li class="p${l.who+1}"><time>${l.t.toTimeString().slice(0,5)}</time><span>${l.text}</span></li>`).join('');
+}
+function act(kind) {
+  if (kind === 'roll') { rollDice(S); render(true); }
+  if (kind === 'buy') { buyProperty(S); render(); }
+  if (kind === 'skip') { skipBuy(S); render(); }
+  if (kind === 'end') { endTurn(S); render(); }
+}
+
+/* ---------------- wiring ---------------- */
+$('pw-go').onclick = () => {
+  if ($('pw').value.trim() === 'dorayaki') { show('s-lobby'); }
+  else { $('pw-err').textContent = 'Wrong room password (try: dorayaki)'; }
+};
+$('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('pw-go').click(); });
+document.querySelectorAll('[data-seat]').forEach(b => b.onclick = () => {
+  const k = +b.dataset.seat; seats[k] = true;
+  const seat = $('seat' + (k+1)); seat.classList.add('taken');
+  seat.querySelector('.who span').textContent = k === view ? 'you' : 'joined';
+  b.textContent = 'Taken'; b.disabled = true;
+  $('start').disabled = !(seats[0] && seats[1]);
+});
+$('start').onclick = () => { S = newGame(); addLog(S, 'Game started. Nobita rolls first.', 0); buildBoard(); render(); show('s-game'); };
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
+  view = +b.dataset.view;
+  document.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+</script>
+</body>
+</html>
