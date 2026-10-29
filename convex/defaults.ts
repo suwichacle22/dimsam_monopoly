@@ -184,6 +184,10 @@ export type Rules = {
   /** dice multiplier per number of stations owned (index 0 = 1 station) */
   stationRent: number[];
   requireMonopolyToBuild: boolean;
+  /** houses can only be built on the tile the player is standing on */
+  buildOnlyOnLandedTile: boolean;
+  /** houses (or landmark) a player may buy per landing; 0 = unlimited */
+  maxHousesPerTurn: number;
   monopolyDoublesBareRent: boolean;
   /** must build evenly across a colour group */
   evenBuild: boolean;
@@ -204,7 +208,9 @@ export const DEFAULT_RULES: Rules = {
   maxDoubles: 2,
   specialItemRent: [250, 500, 1000, 2000],
   stationRent: [50, 100],
-  requireMonopolyToBuild: true,
+  requireMonopolyToBuild: false,
+  buildOnlyOnLandedTile: true,
+  maxHousesPerTurn: 1,
   monopolyDoublesBareRent: true,
   evenBuild: false,
   maxHouses: 4,
@@ -223,6 +229,8 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   specialItemRent: "ค่าเช่าของเล่น (มี 1, 2, 3, 4 ชิ้น)",
   stationRent: "ตัวคูณแต้มลูกเต๋าของร้าน (มี 1, 2 ร้าน)",
   requireMonopolyToBuild: "ต้องมีครบสีถึงจะสร้างบ้านได้",
+  buildOnlyOnLandedTile: "สร้างบ้านได้เฉพาะช่องที่ยืนอยู่",
+  maxHousesPerTurn: "สร้างบ้านได้กี่หลังต่อตา (0 = ไม่จำกัด)",
   monopolyDoublesBareRent: "ครบสีแล้วค่าเช่าที่ดินเปล่า ×2",
   evenBuild: "ต้องสร้างบ้านให้เท่ากันทั้งสี",
   maxHouses: "บ้านสูงสุดต่อที่ดิน (ก่อนเป็นแลนด์มาร์ก)",

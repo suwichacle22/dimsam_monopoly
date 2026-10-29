@@ -16,6 +16,7 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
       dice: [1, 1],
       doublesCount: 0,
       lastRollDouble: false,
+      builtThisTurn: 0,
       treasureDeck: cards.filter((c) => c.deck === "treasure").map((c) => c.id),
       specialDeck: cards.filter((c) => c.deck === "special").map((c) => c.id),
       moves: [],
@@ -339,8 +340,41 @@ describe("cards", () => {
 });
 
 describe("building", () => {
+  /** classic rules: build anywhere, any amount, needs the colour set */
+  function classic(s: E.Snapshot) {
+    s.rules.requireMonopolyToBuild = true;
+    s.rules.buildOnlyOnLandedTile = false;
+    s.rules.maxHousesPerTurn = 0;
+  }
+
+  test("default house rule: buy land plus one house when you land on it", () => {
+    const s = makeSnap([1, 2]); // → tile 3 (800, house 500)
+    E.roll(s, 0);
+    E.buy(s, 0, true);
+    expect(s.props[3]).toEqual({ ownerSeat: 0, houses: 1, landmark: false });
+    expect(s.players[0].cash).toBe(30000 - 800 - 500);
+    expect(() => E.build(s, 0, 3)).toThrow(/ตานี้สร้างได้ 1 หลัง/);
+  });
+
+  test("default house rule: one house per landing, only where you stand", () => {
+    const s = makeSnap([1, 2, 1, 2, 3, 4]);
+    s.props[3] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[9] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.roll(s, 0); // lands on own tile 3
+    expect(() => E.build(s, 0, 9)).toThrow(/ช่องที่ยืนอยู่/);
+    E.build(s, 0, 3);
+    expect(s.props[3].houses).toBe(1);
+    expect(() => E.build(s, 0, 3)).toThrow(/ตานี้สร้างได้/);
+    E.endTurn(s, 0);
+    E.roll(s, 1); // B lands on A's tile 3 and pays rent
+    E.endTurn(s, 1);
+    E.roll(s, 0); // 7 → tile 10, not own land
+    expect(() => E.build(s, 0, 3)).toThrow(/ช่องที่ยืนอยู่/);
+  });
+
   test("requires the full colour group, then builds up to a landmark", () => {
     const s = makeSnap();
+    classic(s);
     s.props[1] = { ownerSeat: 0, houses: 0, landmark: false };
     expect(() => E.build(s, 0, 1)).toThrow(/ครบทั้งสี/);
     s.props[3] = { ownerSeat: 0, houses: 0, landmark: false };
@@ -352,10 +386,13 @@ describe("building", () => {
     expect(() => E.build(s, 0, 1)).toThrow(/เต็ม/);
   });
 
-  test("rule switch allows building without a monopoly", () => {
+  test("rule switch requires a monopoly even with the landed-tile rule", () => {
     const s = makeSnap();
-    s.rules.requireMonopolyToBuild = false;
+    s.rules.requireMonopolyToBuild = true;
+    s.players[0].position = 1;
     s.props[1] = { ownerSeat: 0, houses: 0, landmark: false };
+    expect(() => E.build(s, 0, 1)).toThrow(/ครบทั้งสี/);
+    s.props[3] = { ownerSeat: 0, houses: 0, landmark: false };
     E.build(s, 0, 1);
     expect(s.props[1].houses).toBe(1);
   });

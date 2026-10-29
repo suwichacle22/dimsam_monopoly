@@ -1,10 +1,11 @@
 import type { GameView } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
-import { wealth } from "~/lib/game";
+import { buildBlocker, buildCost, wealth } from "~/lib/game";
 
 export type Actions = {
   roll: () => void;
-  buy: () => void;
+  buy: (withHouse?: boolean) => void;
+  build: (tileIndex: number) => void;
   skipBuy: () => void;
   payJail: () => void;
   worldTour: (tileIndex?: number) => void;
@@ -57,7 +58,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
           <button className="btn-primary w-full" disabled={disabled} onClick={actions.roll}>
             🎲 ทอยลูกเต๋า
           </button>
-          <Hint>แตะที่ดินของตัวเองบนกระดานเพื่อสร้างบ้านหรือขาย</Hint>
+          <Hint>แตะที่ดินของตัวเองบนกระดานเพื่อดูค่าเช่าหรือขาย</Hint>
         </Panel>
       );
     case "jail":
@@ -77,15 +78,24 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
       );
     case "buy": {
       const tile = view.tiles.find((t) => t.index === (g.pending as { tileIndex: number }).tileIndex)!;
+      const price = tile.price ?? 0;
+      const house = tile.housePrice ?? 0;
+      const canAddHouse = tile.type === "city" && house > 0 && (view.rules.maxHousesPerTurn === 0 || view.rules.maxHousesPerTurn >= 1) &&
+        (!view.rules.requireMonopolyToBuild);
       return (
         <Panel>
           <p className="font-semibold text-cocoa">{tile.name} ยังไม่มีเจ้าของ</p>
-          <p className="text-sm text-cocoa/70">ราคา {baht(tile.price ?? 0)} · คุณมี {baht(me.cash)}</p>
-          <div className="flex gap-2">
-            <button className="btn-primary flex-1" disabled={disabled || me.cash < (tile.price ?? 0)} onClick={actions.buy}>
-              ซื้อเลย
+          <p className="text-sm text-cocoa/70">ราคา {baht(price)} · คุณมี {baht(me.cash)}</p>
+          <div className="flex flex-col gap-2">
+            <button className="btn-primary w-full" disabled={disabled || me.cash < price} onClick={() => actions.buy(false)}>
+              ซื้อที่ดิน ({baht(price)})
             </button>
-            <button className="btn-secondary flex-1" disabled={disabled} onClick={actions.skipBuy}>
+            {canAddHouse && (
+              <button className="btn-primary w-full bg-[#5cb85c] shadow-[0_4px_0_#3f8f3f]" disabled={disabled || me.cash < price + house} onClick={() => actions.buy(true)}>
+                ซื้อที่ดิน + บ้าน 1 หลัง ({baht(price + house)})
+              </button>
+            )}
+            <button className="btn-secondary w-full" disabled={disabled} onClick={actions.skipBuy}>
               ไม่ซื้อ
             </button>
           </div>
@@ -141,16 +151,31 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
         </Panel>
       );
     }
-    case "end":
+    case "end": {
+      const here = view.tiles.find((t) => t.index === me.position)!;
+      const blocker = buildBlocker(view, view.me, here);
+      const bc = buildCost(view, here);
+      const ownHere = view.props.find((p) => p.tileIndex === here.index)?.ownerSeat === view.me && here.type === "city";
       return (
         <Panel>
           <p className="font-semibold text-cocoa">{g.lastRollDouble ? "ทอยเบิ้ล! ได้ทอยอีกครั้ง" : "จบตาของคุณ"}</p>
+          {ownHere && blocker === null && (
+            <button className="btn-primary w-full bg-[#5cb85c] shadow-[0_4px_0_#3f8f3f]" disabled={disabled || me.cash < bc.cost} onClick={() => actions.build(here.index)}>
+              {bc.landmark ? `สร้างแลนด์มาร์ก ★ ที่ ${here.name} (${baht(bc.cost)})` : `สร้างบ้านที่ ${here.name} (${baht(bc.cost)})`}
+            </button>
+          )}
+          {ownHere && blocker !== null && blocker !== "สร้างเต็มแล้ว" && <Hint>{blocker}</Hint>}
           <button className="btn-primary w-full" disabled={disabled} onClick={actions.endTurn}>
             {g.lastRollDouble ? "ทอยอีกครั้ง" : "จบตา"}
           </button>
-          <Hint>ก่อนจบตา แตะที่ดินของตัวเองเพื่อสร้างบ้านได้</Hint>
+          <Hint>
+            {view.rules.buildOnlyOnLandedTile
+              ? `สร้างบ้านได้เฉพาะเมืองที่ยืนอยู่ ตาละ ${view.rules.maxHousesPerTurn || "ไม่จำกัด"} หลัง`
+              : "แตะที่ดินของตัวเองบนกระดานเพื่อสร้างบ้าน"}
+          </Hint>
         </Panel>
       );
+    }
   }
 }
 

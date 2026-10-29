@@ -13,6 +13,7 @@ import { TileSheet } from "~/components/TileSheet";
 import type { GameView, TileView } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
 import { errorMessage } from "~/lib/format";
+import { isMuted, play, setMuted, unlockAudio } from "~/lib/sound";
 
 export const Route = createFileRoute("/game")({ component: GamePage });
 
@@ -70,6 +71,13 @@ function Game({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const lastActionRef = useRef<number | null>(null);
+  const [muted, setMutedState] = useState(false);
+  useEffect(() => {
+    setMutedState(isMuted());
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => window.removeEventListener("pointerdown", unlock);
+  }, []);
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -95,7 +103,8 @@ function Game({ token }: { token: string }) {
     if (lastActionRef.current === actionAt) return;
     lastActionRef.current = actionAt;
 
-    const rolled = v.events.some((e) => e.kind === "roll" && e.at === actionAt);
+    const fresh = v.events.filter((e) => e.at === actionAt);
+    const rolled = fresh.some((e) => e.kind === "roll");
     const moves = v.game.moves;
     const cardNow = v.game.lastCard && v.game.lastCard.at === actionAt ? v.game.lastCard : null;
     const finalPos = v.players.map((p) => p.position);
@@ -105,6 +114,7 @@ function Game({ token }: { token: string }) {
     (async () => {
       if (rolled) {
         setRolling(true);
+        play("roll");
         await sleep(ROLL_MS);
         if (cancelled) return;
         setDiceShown(v.game.dice);
@@ -130,6 +140,7 @@ function Game({ token }: { token: string }) {
             const next = pos;
             setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? next : p)));
             setHop((h) => h + 1);
+            play("step");
             await sleep(STEP_MS);
             if (cancelled) return;
           }
@@ -138,15 +149,25 @@ function Game({ token }: { token: string }) {
           await sleep(300);
           if (cancelled) return;
           setCard(cardNow);
+          play("card");
           await sleep(2600);
           if (cancelled) return;
         }
       }
       if (!moves.length && cardNow) {
         setCard(cardNow);
+        play("card");
       }
       setDisplayPos(finalPos);
       setWalking(false);
+      // outcome sounds, once the piece has arrived
+      const mine = (e: { seat?: number }) => e.seat === v.me;
+      if (fresh.some((e) => e.kind === "finish")) play(v.game.winner === v.me ? "win" : "lose");
+      else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
+      else if (fresh.some((e) => e.kind === "build")) play("build");
+      else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
+      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ"))) play("cash");
+      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย"))) play("pay");
     })();
     return () => {
       cancelled = true;
@@ -197,7 +218,8 @@ function Game({ token }: { token: string }) {
 
   const actions = {
     roll: () => run(() => m.roll({ token }), true),
-    buy: () => run(() => m.buy({ token })),
+    buy: (withHouse = false) => run(() => m.buy({ token, withHouse })),
+    build: (tileIndex: number) => run(() => m.build({ token, tileIndex })),
     skipBuy: () => run(() => m.skipBuy({ token })),
     payJail: () => run(() => m.payJail({ token })),
     worldTour: (tileIndex?: number) => run(() => m.worldTour({ token, tileIndex })),
@@ -227,8 +249,19 @@ function Game({ token }: { token: string }) {
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} />
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
-        <div className="flex justify-between text-xs text-cocoa/50 px-1">
+        <div className="flex justify-between items-center text-xs text-cocoa/50 px-1">
           <Link to="/settings">ตั้งค่า</Link>
+          <button
+            className="px-2 py-1 rounded-lg border border-cocoa/20"
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              setMutedState(next);
+              if (!next) play("tap");
+            }}
+          >
+            {muted ? "🔇 ปิดเสียงอยู่" : "🔊 เสียงเปิด"}
+          </button>
           <button
             onClick={() => {
               if (confirm("ออกจากห้องบนเครื่องนี้? (เกมยังอยู่ กลับเข้ามาใหม่ได้ด้วยรหัสห้อง)")) {

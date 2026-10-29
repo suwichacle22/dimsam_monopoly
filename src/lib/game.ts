@@ -18,13 +18,29 @@ export function hasMonopoly(view: GameView, seat: number, group?: string): boole
   return g.length > 0 && g.every((t) => propAt(view, t.index)?.ownerSeat === seat);
 }
 
-export function canBuildNow(view: GameView, seat: number, tile: TileView): boolean {
+/** Why a player can't build here right now, or null if they can. */
+export function buildBlocker(view: GameView, seat: number, tile: TileView): string | null {
   const prop = propAt(view, tile.index);
-  if (!prop || prop.ownerSeat !== seat || tile.type !== "city" || prop.landmark) return false;
-  if (view.game.turn !== seat) return false;
-  if (!["roll", "end", "jail", "world_tour"].includes(view.game.phase)) return false;
-  if (view.rules.requireMonopolyToBuild && !hasMonopoly(view, seat, tile.group)) return false;
-  return true;
+  const me = view.players.find((p) => p.seat === seat);
+  const r = view.rules;
+  if (!prop || prop.ownerSeat !== seat || tile.type !== "city") return "ไม่ใช่เมืองของคุณ";
+  if (prop.landmark) return "สร้างเต็มแล้ว";
+  if (view.game.turn !== seat || view.game.status !== "playing") return "ยังไม่ถึงตาคุณ";
+  if (!["roll", "end", "jail", "world_tour"].includes(view.game.phase)) return "ตอนนี้สร้างไม่ได้";
+  if (r.buildOnlyOnLandedTile && me?.position !== tile.index) return "สร้างได้เฉพาะช่องที่ยืนอยู่";
+  if (r.maxHousesPerTurn > 0 && (view.game.builtThisTurn ?? 0) >= r.maxHousesPerTurn) return `ตานี้สร้างครบ ${r.maxHousesPerTurn} หลังแล้ว`;
+  if (r.requireMonopolyToBuild && !hasMonopoly(view, seat, tile.group)) return "ต้องมีครบทั้งสีก่อน";
+  return null;
+}
+
+export function canBuildNow(view: GameView, seat: number, tile: TileView): boolean {
+  return buildBlocker(view, seat, tile) === null;
+}
+
+export function buildCost(view: GameView, tile: TileView): { cost: number; landmark: boolean } {
+  const prop = propAt(view, tile.index);
+  const landmark = !!prop && prop.houses >= view.rules.maxHouses;
+  return { cost: Math.round((tile.housePrice ?? 0) * (landmark ? view.rules.landmarkCostMultiplier : 1)), landmark };
 }
 
 export function canSellNow(view: GameView, seat: number, tile: TileView): boolean {

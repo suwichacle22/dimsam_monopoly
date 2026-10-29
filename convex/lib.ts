@@ -82,7 +82,7 @@ export async function loadSnapshot(ctx: Ctx, game: Doc<"games">): Promise<Loaded
     rules: await getRules(ctx),
     tiles: await getTiles(ctx),
     cards: await getCards(ctx),
-    game: { ...gameState, treasureDeck: [...game.treasureDeck], specialDeck: [...game.specialDeck] },
+    game: { ...gameState, builtThisTurn: game.builtThisTurn ?? 0, treasureDeck: [...game.treasureDeck], specialDeck: [...game.specialDeck] },
     players: players.map((p) => ({
       seat: p.seat,
       name: p.name,
@@ -111,6 +111,7 @@ export async function saveSnapshot(ctx: MutationCtx, loaded: Loaded) {
     dice: g.dice,
     doublesCount: g.doublesCount,
     lastRollDouble: g.lastRollDouble,
+    builtThisTurn: g.builtThisTurn,
     pending: g.pending,
     treasureDeck: g.treasureDeck as Id<"cards">[],
     specialDeck: g.specialDeck as Id<"cards">[],

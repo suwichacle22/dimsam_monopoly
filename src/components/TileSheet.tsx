@@ -1,6 +1,6 @@
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView, TileView } from "~/lib/game";
-import { canBuildNow, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
+import { buildBlocker, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
 import { baht, cx, GROUP_COLORS, TYPE_LABEL } from "~/lib/format";
 
 export function TileSheet({
@@ -26,7 +26,9 @@ export function TileSheet({
   const owner = prop ? view.players.find((p) => p.seat === prop.ownerSeat) : undefined;
   const r = view.rules;
   const band = tile.group ? GROUP_COLORS[tile.group] : "#e0c9a6";
-  const buildable = canBuildNow(view, view.me, tile);
+  const blocker = buildBlocker(view, view.me, tile);
+  const buildable = blocker === null;
+  const ownCity = prop?.ownerSeat === view.me && tile.type === "city";
   const sellable = canSellNow(view, view.me, tile);
   const toLandmark = prop && prop.houses >= r.maxHouses;
   const buildCost = Math.round((tile.housePrice ?? 0) * (toLandmark ? r.landmarkCostMultiplier : 1));
@@ -120,6 +122,7 @@ export function TileSheet({
           <p className="px-4 pb-2 text-sm text-berry">ถ้าคุณตกช่องนี้ตอนนี้ จ่ายประมาณ {baht(rentPreview(view, tile, view.game.dice[0] + view.game.dice[1]))}</p>
         )}
 
+        {ownCity && !buildable && blocker !== "ยังไม่ถึงตาคุณ" && <p className="px-4 pb-2 text-xs text-cocoa/60">สร้างบ้าน: {blocker}</p>}
         {(buildable || sellable) && (
           <div className="px-4 pb-4 pt-2 flex flex-wrap gap-2 border-t border-cocoa/10">
             {buildable && (

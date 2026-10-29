@@ -86,6 +86,7 @@ export const join = mutation({
           dice: [1, 1],
           doublesCount: 0,
           lastRollDouble: false,
+          builtThisTurn: 0,
           treasureDeck: [],
           specialDeck: [],
           moves: [],
@@ -216,6 +217,7 @@ export const newGame = mutation({
         dice: [1, 1],
         doublesCount: 0,
         lastRollDouble: false,
+        builtThisTurn: 0,
         treasureDeck: [],
         specialDeck: [],
         moves: [],
@@ -255,8 +257,8 @@ export const roll = mutation({
   handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.roll(s, seat)),
 });
 export const buy = mutation({
-  args: { token: v.string() },
-  handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.buy(s, seat)),
+  args: { token: v.string(), withHouse: v.optional(v.boolean()) },
+  handler: (ctx, { token, withHouse }) => act(ctx, token, (s, seat) => E.buy(s, seat, withHouse ?? false)),
 });
 export const skipBuy = mutation({
   args: { token: v.string() },

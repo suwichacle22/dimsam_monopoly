@@ -52,7 +52,7 @@ const pages = [A, B];
 let shot = 0;
 async function step(p: Page, label: string) {
   // pick whichever action button is available
-  const buttons = ["ทอยลูกเต๋า", "ทอยหาเบิ้ล", "ซื้อเลย", "ไม่ซื้อ", "อยู่ตรงนี้", "ทอยอีกครั้ง", "จบตา", "ยอมแพ้"];
+  const buttons = ["ทอยลูกเต๋า", "ทอยหาเบิ้ล", "ซื้อที่ดิน + บ้าน", "ซื้อที่ดิน", "ไม่ซื้อ", "อยู่ตรงนี้", "สร้างบ้านที่", "ทอยอีกครั้ง", "จบตา", "ยอมแพ้"];
   for (let tries = 0; tries < 40; tries++) {
     // dismiss card toast
     const close = p.getByText("แตะเพื่อปิด");
@@ -60,10 +60,11 @@ async function step(p: Page, label: string) {
     for (const b of buttons) {
       const btn = p.getByRole("button", { name: b, exact: false }).first();
       if ((await btn.isVisible().catch(() => false)) && (await btn.isEnabled().catch(() => false))) {
-        if (b === "ซื้อเลย" || b === "ทอยลูกเต๋า" || b === "ทอยหาเบิ้ล") {
+        if (b.startsWith("ซื้อที่ดิน") || b === "ทอยลูกเต๋า" || b === "ทอยหาเบิ้ล" || b === "สร้างบ้านที่") {
+          if (b.startsWith("ซื้อที่ดิน") || b === "สร้างบ้านที่") await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_offer.png` });
           await btn.click();
-          await p.waitForTimeout(3500);
-          await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_${b === "ซื้อเลย" ? "buy" : "roll"}.png` });
+          await p.waitForTimeout(b === "สร้างบ้านที่" ? 800 : 3500);
+          await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_${b.startsWith("ซื้อ") ? "buy" : b === "สร้างบ้านที่" ? "build" : "roll"}.png` });
           return true;
         }
         if (b === "ยอมแพ้") return false;
@@ -101,7 +102,7 @@ for (const p of [A, B]) {
 await B.locator(".grid > button").nth(3).click({ force: true });
 await B.waitForTimeout(500);
 await B.screenshot({ path: `${out}/tile_sheet_phone.png` });
-await B.getByRole("button", { name: "ปิด" }).click();
+await B.getByRole("button", { name: "ปิด", exact: true }).click();
 await A.goto(BASE + "/settings");
 await A.waitForTimeout(1500);
 await A.screenshot({ path: `${out}/settings_rules.png`, fullPage: true });

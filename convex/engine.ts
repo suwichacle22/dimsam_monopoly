@@ -36,6 +36,8 @@ export type GameState = {
   dice: number[];
   doublesCount: number;
   lastRollDouble: boolean;
+  /** houses bought since the last landing (for maxHousesPerTurn) */
+  builtThisTurn: number;
   pending?: Pending;
   treasureDeck: string[];
   specialDeck: string[];
@@ -267,6 +269,7 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
   const g = s.game;
   g.pending = undefined;
   g.phase = "end";
+  g.builtThisTurn = 0;
   log(s, "land", `${p.name} มาถึง ${tile.name}`, seat);
 
   switch (tile.type) {
@@ -411,6 +414,7 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
   g.pending = undefined;
   g.doublesCount = 0;
   g.lastRollDouble = false;
+  g.builtThisTurn = 0;
 
   if (p.bankrupt) {
     if (depth > s.players.length) return;
@@ -521,19 +525,22 @@ export function roll(s: Snapshot, seat: number) {
   land(s, seat);
 }
 
-export function buy(s: Snapshot, seat: number) {
+export function buy(s: Snapshot, seat: number, withHouse = false) {
   requireTurn(s, seat, "buy");
   const g = s.game;
   if (g.pending?.kind !== "buy") throw new GameError("ไม่มีอะไรให้ซื้อ");
   const tile = tileAt(s, g.pending.tileIndex);
   const p = s.players[seat];
   const price = tile.price ?? 0;
-  if (p.cash < price) throw new GameError("เงินไม่พอ");
+  const houseCost = withHouse && tile.type === "city" ? (tile.housePrice ?? 0) : 0;
+  if (withHouse && tile.type !== "city") throw new GameError("สร้างบ้านได้เฉพาะเมือง");
+  if (p.cash < price + houseCost) throw new GameError("เงินไม่พอ");
   p.cash -= price;
   s.props[tile.index] = { ownerSeat: seat, houses: 0, landmark: false };
   log(s, "buy", `${p.name} ซื้อ ${tile.name} ราคา ${fmt(price)} บาท`, seat);
   g.pending = undefined;
   g.phase = "end";
+  if (withHouse) build(s, seat, tile.index);
 }
 
 export function skipBuy(s: Snapshot, seat: number) {
@@ -581,6 +588,8 @@ export function build(s: Snapshot, seat: number, tileIndex: number) {
   const prop = s.props[tileIndex];
   const p = s.players[seat];
   if (tile.type !== "city" || !prop || prop.ownerSeat !== seat) throw new GameError("ไม่ใช่ที่ดินของคุณ");
+  if (r.buildOnlyOnLandedTile && p.position !== tileIndex) throw new GameError("สร้างได้เฉพาะช่องที่ยืนอยู่");
+  if (r.maxHousesPerTurn > 0 && s.game.builtThisTurn >= r.maxHousesPerTurn) throw new GameError(`ตานี้สร้างได้ ${r.maxHousesPerTurn} หลังเท่านั้น`);
   if (r.requireMonopolyToBuild && tile.group && !hasMonopoly(s, seat, tile.group)) throw new GameError("ต้องมีครบทั้งสีก่อน");
   if (prop.landmark) throw new GameError("สร้างเต็มแล้ว");
   if (r.evenBuild && tile.group) {
@@ -591,6 +600,7 @@ export function build(s: Snapshot, seat: number, tileIndex: number) {
   const cost = Math.round((tile.housePrice ?? 0) * (toLandmark ? r.landmarkCostMultiplier : 1));
   if (p.cash < cost) throw new GameError("เงินไม่พอ");
   p.cash -= cost;
+  s.game.builtThisTurn += 1;
   if (toLandmark) {
     prop.landmark = true;
     prop.houses = 0;
