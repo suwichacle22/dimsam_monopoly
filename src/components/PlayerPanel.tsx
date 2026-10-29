@@ -3,6 +3,7 @@ import { DimsamToken } from "~/art/Dimsam";
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView, PlayerView } from "~/lib/game";
 import { baht, cx, GROUP_COLORS } from "~/lib/format";
+import { wealth } from "~/lib/game";
 
 function useCashFloat(cash: number) {
   const prev = useRef(cash);
@@ -20,6 +21,7 @@ function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile
   const float = useCashFloat(p.cash);
   const isTurn = view.game.turn === p.seat && view.game.status === "playing";
   const owned = view.props.filter((x) => x.ownerSeat === p.seat).map((x) => view.tiles.find((t) => t.index === x.tileIndex)!);
+  const w = wealth(view, p.seat);
   return (
     <div className={cx("card p-3 flex flex-col gap-2 relative", isTurn && "glow-turn border-caramel", p.bankrupt && "opacity-50")}>
       <div className="flex items-center gap-3">
@@ -50,6 +52,17 @@ function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile
           {p.skipTurns > 0 && <span className="bg-cream-2 rounded-full px-2 py-[1px]">💤 พัก {p.skipTurns} ตา</span>}
           {p.bankrupt && <span className="bg-berry/20 rounded-full px-2 py-[1px]">ล้มละลาย</span>}
         </div>
+      </div>
+      <div className="flex gap-3 text-[11px] text-cocoa/70 tabular-nums">
+        <span title="ราคาที่ซื้อมาของที่ดินและสิ่งก่อสร้างทั้งหมด">
+          ทรัพย์สิน <b className="text-cocoa">{baht(w.assets)}</b>
+        </span>
+        <span title={`ขายคืนธนาคารได้ ${Math.round(view.rules.landSellBackRatio * 100)}% ของราคาซื้อ`}>
+          ขายคืนได้ <b className="text-cocoa">{baht(w.sellable)}</b>
+        </span>
+        <span title="เงินสด + ทรัพย์สิน" className="ml-auto">
+          รวม <b className="text-cocoa">{baht(p.cash + w.assets)}</b>
+        </span>
       </div>
       {owned.length > 0 && (
         <div className="flex flex-wrap gap-1">

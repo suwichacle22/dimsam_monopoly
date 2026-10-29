@@ -1,5 +1,6 @@
 import type { GameView } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
+import { wealth } from "~/lib/game";
 
 export type Actions = {
   roll: () => void;
@@ -123,16 +124,23 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
         </Panel>
       );
     }
-    case "debt":
+    case "debt": {
+      const w = wealth(view, view.me);
       return (
         <Panel tone="danger">
           <p className="font-semibold text-berry">เงินไม่พอ! ติดลบ {baht(-me.cash)}</p>
-          <p className="text-sm text-cocoa/70">แตะที่ดินของคุณบนกระดานเพื่อขายบ้านหรือขายที่ดินคืนธนาคาร จนเงินไม่ติดลบ</p>
+          <p className="text-sm text-cocoa/70">
+            แตะที่ดินของคุณบนกระดานเพื่อขายบ้านหรือขายที่ดินคืนธนาคาร (ได้ {Math.round(view.rules.landSellBackRatio * 100)}% ของราคาซื้อ) จนเงินไม่ติดลบ
+          </p>
+          <p className="text-sm">
+            ขายทั้งหมดได้สูงสุด <b>{baht(w.sellable)}</b> จากทรัพย์สินมูลค่า {baht(w.assets)}
+          </p>
           <button className="btn-danger w-full" disabled={disabled} onClick={actions.giveUp}>
             ยอมแพ้
           </button>
         </Panel>
       );
+    }
     case "end":
       return (
         <Panel>

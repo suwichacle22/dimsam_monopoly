@@ -56,3 +56,33 @@ export function rentPreview(view: GameView, tile: TileView, diceSum = 7): number
   }
   return 0;
 }
+
+export function landSellValue(view: GameView, tile: TileView): number {
+  return tile.sellBack ?? Math.floor((tile.price ?? 0) * view.rules.landSellBackRatio);
+}
+
+export function houseSellValue(view: GameView, tile: TileView, landmark: boolean): number {
+  const r = view.rules;
+  return Math.floor((tile.housePrice ?? 0) * (landmark ? r.landmarkCostMultiplier : 1) * r.houseSellBackRatio);
+}
+
+/** Purchase value of everything a player owns, and what the bank would pay for it now. */
+export function wealth(view: GameView, seat: number): { assets: number; sellable: number } {
+  let assets = 0;
+  let sellable = 0;
+  const r = view.rules;
+  for (const p of view.props) {
+    if (p.ownerSeat !== seat) continue;
+    const t = view.tiles.find((x) => x.index === p.tileIndex);
+    if (!t) continue;
+    assets += t.price ?? 0;
+    sellable += landSellValue(view, t);
+    assets += p.houses * (t.housePrice ?? 0);
+    sellable += p.houses * houseSellValue(view, t, false);
+    if (p.landmark) {
+      assets += r.maxHouses * (t.housePrice ?? 0) + Math.round((t.housePrice ?? 0) * r.landmarkCostMultiplier);
+      sellable += r.maxHouses * houseSellValue(view, t, false) + houseSellValue(view, t, true);
+    }
+  }
+  return { assets, sellable };
+}

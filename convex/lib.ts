@@ -30,7 +30,7 @@ export async function getRules(ctx: Ctx): Promise<Rules> {
   const doc = await ctx.db.query("rules").first();
   if (!doc) return DEFAULT_RULES;
   const { _id, _creationTime, ...rules } = doc;
-  return rules;
+  return { ...DEFAULT_RULES, ...rules };
 }
 
 export async function getTiles(ctx: Ctx): Promise<Tile[]> {

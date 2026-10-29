@@ -146,15 +146,38 @@ export function rentFor(s: Snapshot, tileIndex: number, diceSum: number): number
   return 0;
 }
 
+/** What the bank pays for the bare land: the tile override, else price × landSellBackRatio. */
+export function landSellValue(rules: Rules, tile: Tile): number {
+  return tile.sellBack ?? Math.floor((tile.price ?? 0) * rules.landSellBackRatio);
+}
+
+/** What the bank pays per house / for a landmark. */
+export function houseSellValue(rules: Rules, tile: Tile, landmark: boolean): number {
+  return Math.floor((tile.housePrice ?? 0) * (landmark ? rules.landmarkCostMultiplier : 1) * rules.houseSellBackRatio);
+}
+
 /** Everything a player could raise by selling houses and land. */
 export function liquidationValue(s: Snapshot, seat: number): number {
   let total = 0;
   for (const i of ownedBy(s, seat)) {
     const t = tileAt(s, i);
     const p = s.props[i];
-    total += t.sellBack ?? 0;
-    const houseUnits = p.houses + (p.landmark ? s.rules.maxHouses + 1 : 0);
-    total += Math.floor(houseUnits * (t.housePrice ?? 0) * s.rules.houseSellBackRatio);
+    total += landSellValue(s.rules, t);
+    total += p.houses * houseSellValue(s.rules, t, false);
+    if (p.landmark) total += s.rules.maxHouses * houseSellValue(s.rules, t, false) + houseSellValue(s.rules, t, true);
+  }
+  return total;
+}
+
+/** What a player has paid for land and buildings (purchase value). */
+export function assetValue(s: Snapshot, seat: number): number {
+  let total = 0;
+  for (const i of ownedBy(s, seat)) {
+    const t = tileAt(s, i);
+    const p = s.props[i];
+    total += t.price ?? 0;
+    total += p.houses * (t.housePrice ?? 0);
+    if (p.landmark) total += s.rules.maxHouses * (t.housePrice ?? 0) + Math.round((t.housePrice ?? 0) * s.rules.landmarkCostMultiplier);
   }
   return total;
 }
@@ -599,11 +622,11 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
   if (prop.landmark) {
     prop.landmark = false;
     prop.houses = r.maxHouses;
-    value = Math.floor((tile.housePrice ?? 0) * r.landmarkCostMultiplier * r.houseSellBackRatio);
+    value = houseSellValue(r, tile, true);
     log(s, "sell", `${p.name} ขายแลนด์มาร์กที่ ${tile.name} ได้ ${fmt(value)} บาท`, seat);
   } else {
     prop.houses -= 1;
-    value = Math.floor((tile.housePrice ?? 0) * r.houseSellBackRatio);
+    value = houseSellValue(r, tile, false);
     log(s, "sell", `${p.name} ขายบ้าน 1 หลังที่ ${tile.name} ได้ ${fmt(value)} บาท`, seat);
   }
   p.cash += value;
@@ -617,7 +640,7 @@ export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
   const p = s.players[seat];
   if (!prop || prop.ownerSeat !== seat) throw new GameError("ไม่ใช่ที่ดินของคุณ");
   if (prop.houses > 0 || prop.landmark) throw new GameError("ขายบ้านออกก่อน");
-  const value = tile.sellBack ?? 0;
+  const value = landSellValue(s.rules, tile);
   delete s.props[tileIndex];
   p.cash += value;
   log(s, "sell", `${p.name} ขาย ${tile.name} คืนธนาคาร ได้ ${fmt(value)} บาท`, seat);

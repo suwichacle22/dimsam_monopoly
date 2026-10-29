@@ -75,6 +75,7 @@ export const rulesFields = {
   maxHouses: v.number(),
   landmarkCostMultiplier: v.number(),
   houseSellBackRatio: v.number(),
+  landSellBackRatio: v.optional(v.number()),
   cardMovesCollectStart: v.boolean(),
 };
 

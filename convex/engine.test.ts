@@ -360,6 +360,26 @@ describe("building", () => {
     expect(s.props[1].houses).toBe(1);
   });
 
+  test("land sells back at the rule ratio of its buy price, unless the tile overrides it", () => {
+    const s = makeSnap();
+    s.props[1] = { ownerSeat: 0, houses: 0, landmark: false }; // price 800
+    s.rules.landSellBackRatio = 0.25;
+    E.sellLand(s, 0, 1);
+    expect(s.players[0].cash).toBe(30200);
+    s.tiles = s.tiles.map((t) => (t.index === 3 ? { ...t, sellBack: 777 } : t));
+    s.props[3] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.sellLand(s, 0, 3);
+    expect(s.players[0].cash).toBe(30977);
+  });
+
+  test("asset and liquidation values count land and buildings", () => {
+    const s = makeSnap();
+    s.props[1] = { ownerSeat: 0, houses: 2, landmark: false }; // 800 + 2×500
+    s.props[5] = { ownerSeat: 0, houses: 0, landmark: false }; // 2000
+    expect(E.assetValue(s, 0)).toBe(3800);
+    expect(E.liquidationValue(s, 0)).toBe(1900);
+  });
+
   test("selling houses and land returns money", () => {
     const s = makeSnap();
     s.props[1] = { ownerSeat: 0, houses: 2, landmark: false };

@@ -1,6 +1,6 @@
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView, TileView } from "~/lib/game";
-import { canBuildNow, canSellNow, hasMonopoly, propAt, rentPreview } from "~/lib/game";
+import { canBuildNow, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
 import { baht, cx, GROUP_COLORS, TYPE_LABEL } from "~/lib/format";
 
 export function TileSheet({
@@ -42,7 +42,12 @@ export function TileSheet({
             <div className="text-xs text-cocoa/60">{TYPE_LABEL[tile.type]}</div>
             <h2 className="text-xl font-bold text-cocoa leading-tight">{tile.name}</h2>
             {tile.blurb && <p className="text-sm text-cocoa/70 mt-1">{tile.blurb}</p>}
-            {tile.price ? <p className="text-sm mt-1">ราคา <b>{baht(tile.price)}</b> · ขายคืน {baht(tile.sellBack ?? 0)}</p> : null}
+            {tile.price ? (
+              <p className="text-sm mt-1">
+                ราคา <b>{baht(tile.price)}</b> · ขายคืน {baht(landSellValue(view, tile))}
+                <span className="text-cocoa/50"> ({Math.round((landSellValue(view, tile) / tile.price) * 100)}% ของราคาซื้อ)</span>
+              </p>
+            ) : null}
             {owner ? (
               <p className="text-sm mt-1">
                 เจ้าของ: <b>{owner.name}</b>
@@ -124,12 +129,12 @@ export function TileSheet({
             )}
             {sellable && prop && (prop.houses > 0 || prop.landmark) && (
               <button className="btn-secondary" disabled={busy} onClick={() => onSellHouse(tile.index)}>
-                ขาย{prop.landmark ? "แลนด์มาร์ก" : "บ้าน 1 หลัง"} (+{baht(Math.floor((tile.housePrice ?? 0) * (prop.landmark ? r.landmarkCostMultiplier : 1) * r.houseSellBackRatio))})
+                ขาย{prop.landmark ? "แลนด์มาร์ก" : "บ้าน 1 หลัง"} (+{baht(houseSellValue(view, tile, prop.landmark))})
               </button>
             )}
             {sellable && prop && prop.houses === 0 && !prop.landmark && (
               <button className="btn-secondary" disabled={busy} onClick={() => onSellLand(tile.index)}>
-                ขายที่ดินคืน (+{baht(tile.sellBack ?? 0)})
+                ขายที่ดินคืน (+{baht(landSellValue(view, tile))})
               </button>
             )}
           </div>

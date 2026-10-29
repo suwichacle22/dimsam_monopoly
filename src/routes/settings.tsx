@@ -189,7 +189,7 @@ function TileRow({ password, tile }: { password: string; tile: TileDoc }) {
         <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
           <Field label="ราคาที่ดิน" value={d.price} onChange={(v) => setD({ ...d, price: v })} />
           <Field label="ราคาบ้าน" value={d.housePrice} onChange={(v) => setD({ ...d, housePrice: v })} />
-          <Field label="ขายคืน" value={d.sellBack} onChange={(v) => setD({ ...d, sellBack: v })} />
+          <Field label="ขายคืน (ว่าง = ใช้ % จากกติกา)" value={d.sellBack} onChange={(v) => setD({ ...d, sellBack: v })} />
           <Field label="ค่าใช้จ่าย (ช่องภาษี)" value={d.amount} onChange={(v) => setD({ ...d, amount: v })} />
           {tile.type === "city" && (
             <>
