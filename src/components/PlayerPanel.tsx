@@ -23,7 +23,7 @@ function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile
   const owned = view.props.filter((x) => x.ownerSeat === p.seat).map((x) => view.tiles.find((t) => t.index === x.tileIndex)!);
   const w = wealth(view, p.seat);
   return (
-    <div className={cx("card p-3 flex flex-col gap-2 relative", isTurn && "glow-turn border-caramel", p.bankrupt && "opacity-50")}>
+    <div data-seat={p.seat} className={cx("card p-3 flex flex-col gap-2 relative", isTurn && "glow-turn border-caramel", p.bankrupt && "opacity-50")}>
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 shrink-0">
           <DimsamToken variant={p.variant} />

@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { DimsamMood } from "~/art/Dimsam";
 import { Dimsam } from "~/art/Dimsam";
-import { Board } from "~/components/Board";
+import { Board, type TileFx } from "~/components/Board";
+import { CoinFlights, type Flight } from "~/components/CoinFlights";
 import { ActionPanel } from "~/components/ActionPanel";
 import { PlayerPanel } from "~/components/PlayerPanel";
 import { EventLog } from "~/components/EventLog";
 import { CardToast } from "~/components/CardToast";
 import { TileSheet } from "~/components/TileSheet";
+import { Decision } from "~/components/Decision";
 import type { GameView, TileView } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
 import { errorMessage } from "~/lib/format";
@@ -73,7 +75,25 @@ function Game({ token }: { token: string }) {
   const [pendingAction, setPendingAction] = useState(false);
   const lastActionRef = useRef<number | null>(null);
   const [muted, setMutedState] = useState(false);
+  const [tilt3d, setTilt3d] = useState(false);
+  const [fx, setFx] = useState<TileFx[]>([]);
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const fxKey = useRef(0);
+  const pushFx = (index: number, kind: TileFx["kind"]) => {
+    const key = ++fxKey.current;
+    setFx((list) => [...list.filter((f) => f.index !== index), { index, kind, key }]);
+    setTimeout(() => setFx((list) => list.filter((f) => f.key !== key)), 1800);
+  };
+  const flyCoins = (fromTile: number, toSeat: number, n: number) => {
+    const from = document.querySelector<HTMLElement>(`[data-tile="${fromTile}"]`)?.getBoundingClientRect();
+    const to = document.querySelector<HTMLElement>(`[data-seat="${toSeat}"]`)?.getBoundingClientRect();
+    if (!from || !to) return;
+    const id = ++fxKey.current;
+    setFlights((f) => [...f, { id, n, from: { x: from.left + from.width / 2, y: from.top + from.height / 2 }, to: { x: to.left + 40, y: to.top + 30 } }]);
+    setTimeout(() => setFlights((f) => f.filter((x) => x.id !== id)), 1400);
+  };
   useEffect(() => {
+    setTilt3d(localStorage.getItem("dimsam.3d") !== "0" && window.matchMedia("(prefers-reduced-motion: no-preference)").matches);
     setMutedState(isMuted());
     const unlock = () => unlockAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
@@ -129,6 +149,7 @@ function Game({ token }: { token: string }) {
           if (cancelled) return;
           setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? mv.to : p)));
           setHop((h) => h + 1);
+          pushFx(mv.to, "land");
           await sleep(450);
         } else {
           const fwd = (mv.to - mv.from + n) % n;
@@ -145,6 +166,7 @@ function Game({ token }: { token: string }) {
             await sleep(STEP_MS);
             if (cancelled) return;
           }
+          pushFx(mv.to, "land");
         }
         if (i === 0 && cardNow) {
           await sleep(300);
@@ -161,8 +183,18 @@ function Game({ token }: { token: string }) {
       }
       setDisplayPos(finalPos);
       setWalking(false);
-      // outcome sounds, once the piece has arrived
+      // outcome effects, once the piece has arrived
       const mine = (e: { seat?: number }) => e.seat === v.me;
+      for (const e of fresh) {
+        const pos = e.seat !== undefined ? v.players[e.seat]?.position : undefined;
+        if (pos === undefined) continue;
+        if (e.kind === "buy" && !e.text.includes("ไม่ซื้อ")) pushFx(pos, "buy");
+        if (e.kind === "build") pushFx(pos, "build");
+        if (e.kind === "money" && e.text.includes("ค่าเช่า")) {
+          const owner = v.props.find((p) => p.tileIndex === pos)?.ownerSeat;
+          if (owner !== undefined) flyCoins(pos, owner, 6);
+        }
+      }
       if (fresh.some((e) => e.kind === "finish")) play(v.game.winner === v.me ? "win" : "lose");
       else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
       else if (fresh.some((e) => e.kind === "build")) play("build");
@@ -236,6 +268,9 @@ function Game({ token }: { token: string }) {
     openTile: (i: number) => setSheet(view.tiles.find((t) => t.index === i) ?? null),
   };
 
+  const decisionPhase = ["buy", "jail", "card_roll", "world_tour", "debt"].includes(view.game.phase);
+  const overlay = myTurn && !busy && decisionPhase ? <Decision view={view} disabled={pendingAction} actions={actions} /> : undefined;
+
   return (
     <main className="min-h-dvh p-2 sm:p-4 flex flex-col lg:flex-row gap-3 max-w-[1400px] mx-auto">
       <section className="w-full lg:flex-1 lg:max-w-[min(100%,calc(100dvh-2rem))] mx-auto">
@@ -247,8 +282,12 @@ function Game({ token }: { token: string }) {
           dice={diceShown}
           rolling={rolling}
           animate
+          overlay={overlay}
+          tilt={tilt3d ? 14 : 0}
+          fx={fx}
           onTileClick={(t) => setSheet(t)}
         />
+        <CoinFlights flights={flights} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />
@@ -257,6 +296,16 @@ function Game({ token }: { token: string }) {
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
         <div className="flex justify-between items-center text-xs text-cocoa/50 px-1">
           <Link to="/settings">ตั้งค่า</Link>
+          <button
+            className="px-2 py-1 rounded-lg border border-cocoa/20"
+            onClick={() => {
+              const next = !tilt3d;
+              setTilt3d(next);
+              localStorage.setItem("dimsam.3d", next ? "1" : "0");
+            }}
+          >
+            {tilt3d ? "🎲 มุมมอง 3D" : "▭ มุมมองแบน"}
+          </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
             onClick={() => {

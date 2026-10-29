@@ -63,7 +63,9 @@ async function step(p: Page, label: string) {
         if (b.startsWith("ซื้อที่ดิน") || b === "ทอยลูกเต๋า" || b === "ทอยหาเบิ้ล" || b === "สร้างบ้านที่") {
           if (b.startsWith("ซื้อที่ดิน") || b === "สร้างบ้านที่") await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_offer.png` });
           await btn.click();
-          await p.waitForTimeout(b === "สร้างบ้านที่" ? 800 : 3500);
+          await p.waitForTimeout(b === "สร้างบ้านที่" ? 350 : b.startsWith("ซื้อ") ? 1200 : 500);
+          await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_fx.png` });
+          await p.waitForTimeout(b === "สร้างบ้านที่" ? 500 : 2600);
           await p.screenshot({ path: `${out}/t${String(++shot).padStart(2, "0")}_${label}_${b.startsWith("ซื้อ") ? "buy" : b === "สร้างบ้านที่" ? "build" : "roll"}.png` });
           return true;
         }

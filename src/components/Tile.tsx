@@ -1,5 +1,7 @@
 import { memo } from "react";
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
+import { DimsamPaw } from "~/art/Dimsam";
+import type { TileFx } from "./Board";
 import type { PlayerView, PropView, TileView } from "~/lib/game";
 import { cx, gridPos, GROUP_COLORS } from "~/lib/format";
 
@@ -11,6 +13,7 @@ export const Tile = memo(function Tile({
   owner,
   highlight,
   animate,
+  fx,
   onClick,
 }: {
   tile: TileView;
@@ -18,6 +21,7 @@ export const Tile = memo(function Tile({
   owner?: PlayerView;
   highlight?: boolean;
   animate: boolean;
+  fx?: TileFx;
   onClick: () => void;
 }) {
   const pos = gridPos(tile.index);
@@ -29,11 +33,15 @@ export const Tile = memo(function Tile({
   return (
     <button
       type="button"
+      data-tile={tile.index}
       onClick={onClick}
       style={{ gridRow: pos.row, gridColumn: pos.col, ["--owner" as string]: ownerColor }}
       className={cx(
-        "relative overflow-hidden bg-white border border-cocoa/25 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel",
+        "tile relative bg-white border border-cocoa/25 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel",
         "flex min-w-0 min-h-0",
+        fx?.kind === "land" && "tile-land",
+        fx?.kind === "buy" && "tile-buy",
+        fx?.kind === "build" && "tile-build",
         pos.corner && "rounded-xl",
         !pos.corner && pos.side === "bottom" && "flex-col",
         !pos.corner && pos.side === "top" && "flex-col-reverse",
@@ -49,12 +57,15 @@ export const Tile = memo(function Tile({
           className={cx("shrink-0 relative", horizontal ? "w-[14%] h-full" : "h-[14%] w-full")}
         >
           {prop && (prop.houses > 0 || prop.landmark) && (
-            <div className={cx("absolute inset-0 flex items-center justify-center gap-[2px]", horizontal && "flex-col")}>
+            <div className={cx("absolute inset-0 flex items-center justify-center gap-[3px]", horizontal && "flex-col")}>
               {prop.landmark ? (
-                <span className="block w-[70%] aspect-square max-w-[14px] rounded-sm bg-white border border-cocoa/60 rotate-45 scale-75" />
+                <span key={`lm-${fx?.kind === "build" ? fx.key : 0}`} className={cx("landmark3d", fx?.kind === "build" && "house-drop")} />
               ) : (
                 Array.from({ length: prop.houses }).map((_, i) => (
-                  <span key={i} className="block w-[22%] aspect-square max-w-[9px] rounded-[2px] bg-white border border-cocoa/60" />
+                  <span
+                    key={i === prop.houses - 1 && fx?.kind === "build" ? `h-${fx.key}` : i}
+                    className={cx("house3d", i === prop.houses - 1 && fx?.kind === "build" && "house-drop")}
+                  />
                 ))
               )}
             </div>
@@ -83,6 +94,31 @@ export const Tile = memo(function Tile({
           style={{ background: ownerColor }}
           className="absolute right-[2px] bottom-[2px] w-[9px] h-[9px] rounded-full border border-white shadow"
         />
+      )}
+      {fx?.kind === "land" && (
+        <span key={`s-${fx.key}`} className="sparkles" aria-hidden>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <i key={i} style={{ ["--a" as string]: `${i * 45}deg` }} />
+          ))}
+        </span>
+      )}
+      {fx?.kind === "buy" && (
+        <span key={`b-${fx.key}`} className="bought" aria-hidden>
+          <span className="stamp" style={{ color: ownerColor ?? "#e0a458" }}>
+            <DimsamPaw />
+          </span>
+          {Array.from({ length: 14 }).map((_, i) => (
+            <i
+              key={i}
+              style={{
+                ["--dx" as string]: `${Math.cos((i / 14) * Math.PI * 2) * (44 + (i % 3) * 22)}px`,
+                ["--dy" as string]: `${-60 - (i % 4) * 22}px`,
+                ["--c" as string]: ["#f7c59f", "#f06aa8", "#4fa7e8", "#f5c518", "#5cb85c", "#a26be0"][i % 6],
+                ["--d" as string]: `${(i % 5) * 40}ms`,
+              }}
+            />
+          ))}
+        </span>
       )}
     </button>
   );

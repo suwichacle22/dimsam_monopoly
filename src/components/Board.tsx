@@ -22,6 +22,8 @@ export function tileCenter(index: number): { x: number; y: number } {
   };
 }
 
+export type TileFx = { index: number; kind: "land" | "buy" | "build"; key: number };
+
 export function Board({
   view,
   displayPos,
@@ -30,6 +32,9 @@ export function Board({
   dice,
   rolling,
   animate,
+  overlay,
+  tilt = 0,
+  fx = [],
   onTileClick,
 }: {
   view: GameView;
@@ -39,15 +44,30 @@ export function Board({
   dice: number[];
   rolling: boolean;
   animate: boolean;
+  /** replaces the mascot with a decision card (buy, jail, …) */
+  overlay?: React.ReactNode;
+  /** 3D tilt of the board in degrees (0 = flat) */
+  tilt?: number;
+  /** one-shot tile effects (landing pop, bought stamp, house drop) */
+  fx?: TileFx[];
   onTileClick: (tile: TileView) => void;
 }) {
   const me = view.players.find((p) => p.seat === view.me);
   const current = view.players[view.game.turn];
   return (
-    <div className="relative w-full aspect-square select-none">
+    <div className="board-stage relative w-full aspect-square select-none" style={{ perspective: tilt ? "1600px" : undefined }}>
       <div
-        className="grid w-full h-full bg-cream-2 rounded-2xl border-2 border-cocoa/30 overflow-hidden shadow-[0_8px_0_rgba(107,74,43,0.12)]"
-        style={{ gridTemplateColumns: "1.5fr repeat(9, 1fr) 1.5fr", gridTemplateRows: "1.5fr repeat(9, 1fr) 1.5fr" }}
+        className="board-tilt relative w-full h-full"
+        style={{
+          transform: tilt ? `rotateX(${tilt}deg)` : undefined,
+          transformStyle: tilt ? "preserve-3d" : undefined,
+          transition: "transform 0.6s cubic-bezier(.2,.8,.2,1)",
+          ["--tilt" as string]: `${tilt}deg`,
+        }}
+      >
+      <div
+        className={cx("grid w-full h-full bg-cream-2 rounded-2xl border-2 border-cocoa/30 shadow-[0_8px_0_rgba(107,74,43,0.12)]", tilt ? "board-3d" : "overflow-hidden")}
+        style={{ gridTemplateColumns: "1.5fr repeat(9, 1fr) 1.5fr", gridTemplateRows: "1.5fr repeat(9, 1fr) 1.5fr", transformStyle: tilt ? "preserve-3d" : undefined }}
       >
         {view.tiles.map((tile) => {
           const prop = propAt(view, tile.index);
@@ -60,6 +80,7 @@ export function Board({
               owner={owner}
               animate={animate}
               highlight={view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
+              fx={fx.find((f) => f.index === tile.index)}
               onClick={() => onTileClick(tile)}
             />
           );
@@ -70,16 +91,20 @@ export function Board({
           <div className="absolute inset-0 opacity-[0.07] pointer-events-none" aria-hidden>
             <PawField />
           </div>
-          <div className="text-center z-[1]">
+          <div className={cx("text-center z-[1]", !!overlay && "hidden sm:block")}>
             <div className="font-bold text-cocoa text-[clamp(14px,3.2vw,30px)] leading-none tracking-tight">Dimsam Monopoly</div>
             <div className="text-cocoa/60 text-[clamp(9px,1.6vw,13px)] mt-1">
               {view.game.status === "playing" ? `ตาของ ${current?.name ?? ""}` : "จบเกมแล้ว"}
             </div>
           </div>
-          <div className="relative z-[1] w-[46%] max-w-[260px] aspect-square">
-            <Dimsam mood={mood} variant={me?.variant ?? "blue"} animate={animate} />
-          </div>
-          <div className="z-[1] flex items-end justify-between w-full gap-2">
+          {overlay ? (
+            <div className="relative z-[2] flex-1 min-h-0 w-full flex items-center justify-center py-1">{overlay}</div>
+          ) : (
+            <div className="mascot relative z-[1] w-[46%] max-w-[260px] aspect-square">
+              <Dimsam mood={mood} variant={me?.variant ?? "blue"} animate={animate} />
+            </div>
+          )}
+          <div className={cx("z-[1] flex items-end justify-between w-full gap-2", !!overlay && "hidden sm:flex")}>
             <Pile count={view.game.treasureCount} label="หีบขนม">
               <C.TileTreasure animate={false} />
             </Pile>
@@ -91,7 +116,7 @@ export function Board({
         </div>
       </div>
 
-      {/* pieces */}
+      {/* pieces (stand upright when the board is tilted) */}
       {view.players.map((p) => {
         const pos = displayPos[p.seat] ?? p.position;
         const c = tileCenter(pos);
@@ -112,12 +137,17 @@ export function Board({
               transition: "left 0.22s ease-in-out, top 0.22s ease-in-out",
             }}
           >
-            <div key={hop} className={cx("token-hop w-full aspect-square drop-shadow-[0_3px_0_rgba(0,0,0,0.25)]", p.bankrupt && "opacity-30 grayscale")}>
-              <DimsamToken variant={p.variant} animate={animate} />
+            <div
+              style={{ transform: tilt ? `rotateX(calc(-1 * var(--tilt))) translateZ(6px)` : undefined, transformOrigin: "50% 100%" }}
+            >
+              <div key={hop} className={cx("token-hop w-full aspect-square drop-shadow-[0_3px_0_rgba(0,0,0,0.25)]", p.bankrupt && "opacity-30 grayscale")}>
+                <DimsamToken variant={p.variant} animate={animate} />
+              </div>
             </div>
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
