@@ -93,7 +93,12 @@ await A.waitForTimeout(800);
 await A.screenshot({ path: `${out}/final_desktop.png` });
 await B.screenshot({ path: `${out}/final_phone.png`, fullPage: true });
 // tile sheet + settings on phone
-await B.locator("button[style*='grid-row']").nth(3).click();
+for (const p of [A, B]) {
+  const close = p.getByText("แตะเพื่อปิด");
+  if (await close.isVisible().catch(() => false)) await close.click();
+}
+
+await B.locator(".grid > button").nth(3).click({ force: true });
 await B.waitForTimeout(500);
 await B.screenshot({ path: `${out}/tile_sheet_phone.png` });
 await B.getByRole("button", { name: "ปิด" }).click();
@@ -104,7 +109,7 @@ await A.getByRole("button", { name: "แผนที่ (40 ช่อง)" }).cl
 await A.getByRole("button", { name: "แก้ไข" }).nth(1).click();
 await A.waitForTimeout(400);
 await A.screenshot({ path: `${out}/settings_tiles.png` });
-await A.getByRole("button", { name: "การ์ด" }).click();
+await A.getByRole("button", { name: "การ์ด", exact: true }).click();
 await A.getByRole("button", { name: "ผล" }).first().click();
 await A.waitForTimeout(400);
 await A.screenshot({ path: `${out}/settings_cards.png` });
