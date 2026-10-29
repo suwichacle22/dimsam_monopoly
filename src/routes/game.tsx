@@ -14,6 +14,7 @@ import type { GameView, TileView } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
 import { errorMessage } from "~/lib/format";
 import { isMuted, play, setMuted, unlockAudio } from "~/lib/sound";
+import { useHotkey } from "@tanstack/react-hotkeys";
 
 export const Route = createFileRoute("/game")({ component: GamePage });
 
@@ -192,11 +193,16 @@ function Game({ token }: { token: string }) {
     }
   }, []);
 
-  if (!view) return <div className="min-h-dvh flex items-center justify-center text-cocoa/60">กำลังโหลดกระดาน…</div>;
-
-  const me = view.players.find((p) => p.seat === view.me);
+  const me = view?.players.find((p) => p.seat === view.me);
   const busy = rolling || walking;
-  const myTurn = view.game.turn === view.me && view.game.status === "playing";
+  const myTurn = !!view && view.game.turn === view.me && view.game.status === "playing";
+  const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll"].includes(view!.game.phase);
+
+  // Space = roll (only when it's actually your turn to roll); Escape closes sheets
+  useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow });
+  useHotkey("Escape", () => { setSheet(null); setCard(null); }, { enabled: !!sheet || !!card });
+
+  if (!view) return <div className="min-h-dvh flex items-center justify-center text-cocoa/60">กำลังโหลดกระดาน…</div>;
   const mood: DimsamMood =
     view.game.status === "finished"
       ? view.game.winner === view.me

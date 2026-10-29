@@ -56,7 +56,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
         <Panel>
           <p className="font-semibold text-cocoa">ตาของคุณ</p>
           <button className="btn-primary w-full" disabled={disabled} onClick={actions.roll}>
-            🎲 ทอยลูกเต๋า
+            🎲 ทอยลูกเต๋า <kbd className="hidden sm:inline-block ml-2 text-xs font-normal bg-white/25 rounded px-1.5 py-0.5 align-middle">Space</kbd>
           </button>
           <Hint>แตะที่ดินของตัวเองบนกระดานเพื่อดูค่าเช่าหรือขาย</Hint>
         </Panel>
