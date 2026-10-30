@@ -285,7 +285,10 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
       } else if (prop.ownerSeat !== seat) {
         const base = rentFor(s, tile.index, opts.diceSum ?? g.dice[0] + g.dice[1]);
         const rent = base * (opts.rentMultiplier ?? 1);
-        if (rent > 0) charge(s, seat, rent, `ค่าเช่า ${tile.name} ให้ ${s.players[prop.ownerSeat].name}`, prop.ownerSeat);
+        if (rent > 0) {
+          s.events.push({ seat, kind: "rent", text: JSON.stringify({ to: prop.ownerSeat, amount: rent, tile: tile.index, landmark: prop.landmark, houses: prop.houses }) });
+          charge(s, seat, rent, `ค่าเช่า ${tile.name} ให้ ${s.players[prop.ownerSeat].name}`, prop.ownerSeat);
+        }
       }
       return;
     }

@@ -116,3 +116,19 @@ export const wipeGames = mutation({
     }
   },
 });
+
+/** Dev helper: give a player a property with houses/landmark (for screenshots and manual testing). */
+export const devGrant = mutation({
+  args: { password: v.string(), seat: v.number(), tileIndex: v.number(), houses: v.number(), landmark: v.boolean() },
+  handler: async (ctx, { password, seat, tileIndex, houses, landmark }) => {
+    guard(password);
+    const game = await ctx.db.query("games").withIndex("by_status", (q) => q.eq("status", "playing")).order("desc").first();
+    if (!game) throw new ConvexError("ไม่มีเกมที่กำลังเล่น");
+    const existing = await ctx.db
+      .query("properties")
+      .withIndex("by_game", (q) => q.eq("gameId", game._id).eq("tileIndex", tileIndex))
+      .first();
+    if (existing) await ctx.db.patch(existing._id, { ownerSeat: seat, houses, landmark });
+    else await ctx.db.insert("properties", { gameId: game._id, tileIndex, ownerSeat: seat, houses, landmark });
+  },
+});

@@ -196,11 +196,38 @@ function Game({ token }: { token: string }) {
           if (cancelled) return;
           setCard(null);
           const p = v.players[seat];
-          setBurst({ id: actionAt, amount: net, label: net > 0 ? `${p.name} ได้รางวัล!` : `${p.name} โดนปรับ`, variant: p.variant });
+          setBurst({
+            id: actionAt,
+            amount: net,
+            label: net > 0 ? `${p.name} ได้รางวัล!` : `${p.name} โดนปรับ`,
+            kicker: cardNow?.deck === "special" ? "ถุงของเล่น" : "หีบขนม",
+            variant: p.variant,
+          });
           play(net > 0 ? "prize" : "penalty");
           await sleep(2300);
           if (cancelled) return;
         }
+      }
+      // rent burst: shown from this phone's point of view (payer loses, owner gains)
+      const rentEv = fresh.find((e) => e.kind === "rent");
+      if (rentEv && rentEv.seat !== undefined) {
+        const r = JSON.parse(rentEv.text) as { to: number; amount: number; tile: number; landmark: boolean; houses: number };
+        const payer = v.players[rentEv.seat];
+        const owner = v.players[r.to];
+        const tile = v.tiles.find((t) => t.index === r.tile);
+        const iOwn = r.to === v.me;
+        const what = r.landmark ? "แลนด์มาร์ก ★" : r.houses > 0 ? `บ้าน ${r.houses} หลัง` : tile?.type === "station" ? "ร้าน" : tile?.type === "special_item" ? "ของเล่น" : "ที่ดิน";
+        setBurst({
+          id: actionAt + 1,
+          amount: iOwn ? r.amount : -r.amount,
+          label: iOwn ? `${payer.name} มาจ่ายค่าเช่า` : `จ่ายค่าเช่าให้ ${owner.name}`,
+          kicker: `ค่าเช่า ${tile?.name ?? ""}`,
+          detail: `${what}${r.landmark ? " · ค่าเช่าสูงสุด!" : ""}`,
+          variant: iOwn ? owner.variant : payer.variant,
+        });
+        play(iOwn ? "prize" : "penalty");
+        await sleep(2300);
+        if (cancelled) return;
       }
       // outcome effects, once the piece has arrived
       const mine = (e: { seat?: number }) => e.seat === v.me;
@@ -218,8 +245,8 @@ function Game({ token }: { token: string }) {
       else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
       else if (fresh.some((e) => e.kind === "build")) play("build");
       else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
-      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)"))) play("cash");
-      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
+      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)"))) play("cash");
+      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
     })();
     return () => {
       cancelled = true;
