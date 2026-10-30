@@ -47,7 +47,7 @@ Free setup: **Convex** (backend, free tier) + **Cloudflare Workers static assets
    bunx wrangler login
    bunx wrangler deploy
    ```
-   Cloudflare Pages or Vercel also work: output directory `dist/client` (`_redirects` / `vercel.json` already rewrite to `index.html`).
+   Cloudflare Pages or Vercel also work: output directory `dist/client` (Pages falls back to `index.html` on its own; `vercel.json` rewrites to it).
 
 ## Layout
 - `convex/defaults.ts` — board tiles, cards, rules (seed data, copied into the DB on first run)
