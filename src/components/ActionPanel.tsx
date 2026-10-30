@@ -93,7 +93,7 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
       return (
         <Panel>
           <p className="font-semibold text-cocoa">อยู่ในอ่างอาบน้ำ 🛁</p>
-          <p className="text-sm text-cocoa/70">ทอยให้ได้เบิ้ลเพื่อหนีออกมา หรือจ่ายค่าไถ่ {baht(view.rules.jailFine)} (รอ {view.rules.jailMaxTurns} ตาแล้วออกฟรี)</p>
+          <p className="text-sm text-cocoa/70">ทอยให้ได้เบิ้ลเพื่อหนีออกมา หรือจ่ายค่าไถ่ {baht(view.rules.jailFine)}{view.rules.jailMaxTurns > 0 ? ` (รอ ${view.rules.jailMaxTurns} ตาแล้วออกฟรี)` : " (ไม่มีออกฟรี)"}</p>
           <div className="flex gap-2">
             <button className="btn-primary flex-1" disabled={disabled} onClick={() => actions.roll()}>
               🎲 ทอยหาเบิ้ล

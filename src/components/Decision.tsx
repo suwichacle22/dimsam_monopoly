@@ -59,7 +59,7 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
     case "jail":
       return (
         <Card band="#9ed8f5" title="โดนจับอาบน้ำอยู่ 🛁">
-          <Small>ทอยให้ได้เบิ้ลเพื่อหนี หรือจ่ายค่าไถ่ {baht(r.jailFine)} · รอ {r.jailMaxTurns} ตาแล้วออกฟรี</Small>
+          <Small>ทอยให้ได้เบิ้ลเพื่อหนี หรือจ่ายค่าไถ่ {baht(r.jailFine)}{r.jailMaxTurns > 0 ? ` · รอ ${r.jailMaxTurns} ตาแล้วออกฟรี` : " · ไม่มีออกฟรี"}</Small>
           <div className="flex gap-[6px]">
             <Btn tone="primary" disabled={disabled} onClick={() => actions.roll()} label="🎲 ทอยหาเบิ้ล" />
             <Btn tone="ghost" disabled={disabled || me.cash < r.jailFine} onClick={actions.payJail} label={`จ่าย ${baht(r.jailFine)}`} />

@@ -465,7 +465,8 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
     return;
   }
   if (p.inJail) {
-    if (p.jailTurns >= s.rules.jailMaxTurns) {
+    // jailMaxTurns 0 = no free release: only a double or the fine gets you out
+    if (s.rules.jailMaxTurns > 0 && p.jailTurns >= s.rules.jailMaxTurns) {
       p.inJail = false;
       p.jailTurns = 0;
       log(s, "jail", `${p.name} อาบน้ำเสร็จแล้ว ออกจากอ่างได้`, seat);

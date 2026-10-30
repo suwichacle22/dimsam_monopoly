@@ -206,8 +206,28 @@ describe("jail (bath tub)", () => {
     expect(s.game.lastRollDouble).toBe(false);
   });
 
-  test("failing the roll waits one turn then walks out free", () => {
+  test("by default a failed roll keeps you in jail turn after turn", () => {
+    const s = jailed([1, 2, 4, 3, 5, 6]);
+    E.roll(s, 0);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.game.phase).toBe("end");
+    E.endTurn(s, 0);
+    E.roll(s, 1); // 7 → ถุงของเล่น (card)
+    s.game.phase = "end";
+    s.game.pending = undefined;
+    s.players[1].skipTurns = 0;
+    E.endTurn(s, 1);
+    expect(s.game.turn).toBe(0);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.game.phase).toBe("jail");
+    E.roll(s, 0); // 5 + 6, still no double
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.players[0].position).toBe(10);
+  });
+
+  test("with jailMaxTurns 1, failing the roll waits one turn then walks out free", () => {
     const s = jailed([1, 2, 4, 3]);
+    s.rules.jailMaxTurns = 1;
     E.roll(s, 0);
     expect(s.players[0].inJail).toBe(true);
     expect(s.game.phase).toBe("end");
