@@ -239,3 +239,20 @@ body {
   font-size: clamp(8px, 1.35vw, 12px); font-weight: 700; line-height: 1; padding: 2px 6px; border-radius: 999px;
   color: #fff; background: var(--piece); border: 1.5px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.35); }
 .piece-tag-me { background: #fff; color: var(--piece); border-color: var(--piece); }
+
+/* ── tile callout (pass-start bonus) ── */
+.callout { }
+.callout-card { animation: callout-pop 2.6s cubic-bezier(.2,.9,.3,1.1) both; transform-origin: 50% 100%; }
+.callout-card { background: #fff8e1; color: #2e8b2e; border: 3px solid #f5c518; border-radius: 16px; padding: 6px 12px; text-align: center; white-space: nowrap;
+  box-shadow: 0 6px 0 #d9a900, 0 10px 24px rgba(0,0,0,.35); }
+.dark .callout-card { background: #352b10; color: #8fe08f; }
+.callout-amount { font-weight: 800; font-size: clamp(16px, 3.6vw, 30px); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.callout-sub { font-weight: 600; font-size: clamp(10px, 1.8vw, 14px); color: #b8900a; margin-top: 2px; }
+.dark .callout-sub { color: #f5c518; }
+@keyframes callout-pop {
+  0% { opacity: 0; transform: translate(-50%, -80%) scale(.5); }
+  14% { opacity: 1; transform: translate(-50%, -110%) scale(1.12); }
+  24% { transform: translate(-50%, -105%) scale(1); }
+  75% { opacity: 1; transform: translate(-50%, -115%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -150%) scale(.9); }
+}

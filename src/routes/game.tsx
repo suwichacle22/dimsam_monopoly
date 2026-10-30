@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { DimsamMood } from "~/art/Dimsam";
 import { Dimsam } from "~/art/Dimsam";
-import { Board, type TileFx } from "~/components/Board";
+import { Board, type TileFx, type Callout } from "~/components/Board";
 import { CoinFlights, type Flight } from "~/components/CoinFlights";
 import { MoneyBurst, type Burst } from "~/components/MoneyBurst";
 import { TestPanel } from "~/components/TestPanel";
@@ -91,6 +91,13 @@ function Game({ token }: { token: string }) {
   const [muted, setMutedState] = useState(false);
   const [tilt3d, setTilt3d] = useState(false);
   const [fx, setFx] = useState<TileFx[]>([]);
+  const [callout, setCallout] = useState<Callout | null>(null);
+  const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showCallout = (index: number, text: string, sub?: string) => {
+    if (calloutTimer.current) clearTimeout(calloutTimer.current);
+    setCallout({ index, text, sub, key: ++fxKey.current });
+    calloutTimer.current = setTimeout(() => setCallout(null), 2600);
+  };
   const [flights, setFlights] = useState<Flight[]>([]);
   const [burst, setBurst] = useState<Burst>(null);
   const clearBurst = useCallback(() => setBurst(null), []);
@@ -145,6 +152,16 @@ function Game({ token }: { token: string }) {
     const moves = v.game.moves;
     const cardNow = v.game.lastCard && v.game.lastCard.at === actionAt ? v.game.lastCard : null;
     const finalPos = v.players.map((p) => p.position);
+    const startTile = v.tiles.find((t) => t.type === "start")?.index ?? 0;
+    const passed = new Set(fresh.filter((e) => e.kind === "pass_start").map((e) => e.seat).filter((x): x is number => x !== undefined));
+    const passStartBonus = (seat: number) => {
+      if (!passed.has(seat)) return;
+      passed.delete(seat);
+      const amt = Number(fresh.find((e) => e.kind === "pass_start" && e.seat === seat)?.text ?? 0);
+      showCallout(startTile, `+${amt.toLocaleString()} ฿`, "ผ่านบ้านติ่มซำ 🏠");
+      flyCoins(startTile, seat, 5);
+      play("cash");
+    };
     const n = v.tiles.length;
     let cancelled = false;
 
@@ -166,6 +183,7 @@ function Game({ token }: { token: string }) {
           setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? mv.to : p)));
           setHop((h) => h + 1);
           pushFx(mv.to, "land");
+          passStartBonus(mv.seat);
           await sleep(450);
         } else {
           const fwd = (mv.to - mv.from + n) % n;
@@ -179,6 +197,7 @@ function Game({ token }: { token: string }) {
             setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? next : p)));
             setHop((h) => h + 1);
             play("step");
+            if (next === startTile) passStartBonus(mv.seat);
             await sleep(STEP_MS);
             if (cancelled) return;
           }
@@ -199,6 +218,7 @@ function Game({ token }: { token: string }) {
       }
       setDisplayPos(finalPos);
       setWalking(false);
+      for (const seat of [...passed]) passStartBonus(seat); // safety: a pass we did not see while stepping
       // card prize / penalty burst (both phones see it, from the card-drawer's point of view)
       const cardMoney = fresh.filter((e) => e.kind === "card_money");
       if (cardMoney.length) {
@@ -264,7 +284,7 @@ function Game({ token }: { token: string }) {
       else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
       else if (fresh.some((e) => e.kind === "build")) play("build");
       else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
-      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)"))) play("cash");
+      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)") && !e.text.includes("(ผ่านบ้านติ่มซำ)"))) play("cash");
       else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
     })();
     return () => {
@@ -410,6 +430,7 @@ function Game({ token }: { token: string }) {
           animate
           tilt={tilt3d ? 14 : 0}
           fx={fx}
+          callout={callout}
           onTileClick={(t) => setSheet(t)}
           onPileClick={(d) => setDeckSheet(d)}
         />

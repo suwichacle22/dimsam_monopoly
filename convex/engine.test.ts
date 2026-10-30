@@ -246,6 +246,15 @@ describe("jail (bath tub)", () => {
 });
 
 describe("passing start", () => {
+  test("emits a pass_start event carrying the bonus", () => {
+    const s = makeSnap([1, 2]);
+    s.players[0].position = 38; // 38 + 3 → 1, wrapping past START
+    E.roll(s, 0);
+    expect(s.players[0].position).toBe(1);
+    expect(s.players[0].cash).toBe(30000 + 2000);
+    expect(s.events.find((e) => e.kind === "pass_start")?.text).toBe("2000");
+  });
+
   test("collects the bonus when wrapping around", () => {
     const s = makeSnap([6, 6]);
     s.players[0].position = 38;

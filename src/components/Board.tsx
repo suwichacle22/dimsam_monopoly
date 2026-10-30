@@ -23,6 +23,8 @@ export function tileCenter(index: number): { x: number; y: number } {
 }
 
 export type TileFx = { index: number; kind: "land" | "buy" | "build"; key: number };
+/** one-shot badge popping out of a tile, e.g. "+2,000 ผ่านบ้าน" */
+export type Callout = { index: number; text: string; sub?: string; key: number };
 
 const PIECE_COLOR = { blue: "#4fa7e8", pink: "#f06aa8" } as const;
 
@@ -37,6 +39,7 @@ export function Board({
   overlay,
   tilt = 0,
   fx = [],
+  callout,
   onTileClick,
   onPileClick,
 }: {
@@ -53,6 +56,7 @@ export function Board({
   tilt?: number;
   /** one-shot tile effects (landing pop, bought stamp, house drop) */
   fx?: TileFx[];
+  callout?: Callout | null;
   onTileClick: (tile: TileView) => void;
   onPileClick?: (deck: "treasure" | "special") => void;
 }) {
@@ -119,6 +123,25 @@ export function Board({
           </div>
         </div>
       </div>
+
+      {callout && (() => {
+        const c = tileCenter(callout.index);
+        // keep the badge inside the board when the tile is a corner
+        const x = Math.min(78, Math.max(22, c.x));
+        const y = Math.min(96, Math.max(14, c.y));
+        return (
+          <div
+            key={callout.key}
+            className="callout absolute pointer-events-none z-[7]"
+            style={{ left: `${x}%`, top: `${y}%`, transform: tilt ? `rotateX(calc(-1 * var(--tilt)))` : undefined, transformOrigin: "50% 100%" }}
+          >
+            <div className="callout-card">
+              <div className="callout-amount">{callout.text}</div>
+              {callout.sub && <div className="callout-sub">{callout.sub}</div>}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* pieces (stand upright when the board is tilted) */}
       {view.players.map((p) => {

@@ -231,6 +231,7 @@ function bankrupt(s: Snapshot, seat: number) {
 
 function passStart(s: Snapshot, seat: number) {
   gain(s, seat, s.rules.passStartBonus, "ผ่านบ้านติ่มซำ");
+  s.events.push({ seat, kind: "pass_start", text: String(s.rules.passStartBonus) });
 }
 
 function setPosition(s: Snapshot, seat: number, to: number, teleport: boolean) {
