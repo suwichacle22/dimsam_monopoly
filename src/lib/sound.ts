@@ -1,6 +1,6 @@
 // Tiny synthesized sound effects (Web Audio, no files). Unlocked on the first
 // user gesture; muted state is remembered in localStorage.
-export type Sfx = "roll" | "step" | "buy" | "cash" | "pay" | "card" | "build" | "jail" | "win" | "lose" | "tap";
+export type Sfx = "roll" | "step" | "buy" | "cash" | "pay" | "card" | "build" | "jail" | "win" | "lose" | "tap" | "prize" | "penalty";
 
 const KEY = "dimsam.muted";
 let ctx: AudioContext | null = null;
@@ -96,6 +96,15 @@ export function play(name: Sfx) {
     case "jail": // splash + sad woof
       noise(c, t, 0.35, 0.16, 600);
       tone(c, { f: 300, f2: 180, t: t + 0.25, dur: 0.35, type: "sawtooth", gain: 0.1 });
+      return;
+    case "prize": // jackpot: rising arpeggio + coin shower
+      [523, 659, 784, 1047, 1319].forEach((f, i) => tone(c, { f, t: t + i * 0.08, dur: 0.3, type: "triangle", gain: 0.14 }));
+      for (let i = 0; i < 10; i++) tone(c, { f: 1760 + (i % 3) * 220, t: t + 0.45 + i * 0.09, dur: 0.12, type: "sine", gain: 0.08 });
+      return;
+    case "penalty": // womp womp
+      tone(c, { f: 330, f2: 300, t, dur: 0.3, type: "sawtooth", gain: 0.09 });
+      tone(c, { f: 300, f2: 270, t: t + 0.32, dur: 0.3, type: "sawtooth", gain: 0.09 });
+      tone(c, { f: 270, f2: 180, t: t + 0.64, dur: 0.7, type: "sawtooth", gain: 0.09 });
       return;
     case "win":
       [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(c, { f, t: t + i * 0.12, dur: 0.22, type: "triangle", gain: 0.14 }));

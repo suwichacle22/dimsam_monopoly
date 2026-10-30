@@ -157,3 +157,31 @@ body {
 
 @keyframes sheet-up { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 .decision-card { animation: sheet-up .32s cubic-bezier(.2,.9,.3,1.1) both; }
+
+/* ── card prize / penalty burst ───────────────────────────────────────── */
+.burst-coin { position: absolute; top: -40px; width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3b0, #f5c518 55%, #b8860b); border: 2px solid #8a6508; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.burst-coin::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 2px solid rgba(138,101,8,.5); }
+.coin-rain { animation: coin-rain 1.6s cubic-bezier(.3,.1,.6,1) both; }
+@keyframes coin-rain {
+  0% { transform: translateY(0) rotateY(0) scale(.6); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotateY(var(--spin)) scale(1); opacity: 1; }
+}
+.coin-fly { top: auto; bottom: 30%; animation: coin-fly 1.5s cubic-bezier(.2,.6,.6,1) both; }
+@keyframes coin-fly {
+  0% { transform: translate(0,0) rotate(0) scale(1); opacity: 1; }
+  100% { transform: translate(calc((var(--spin) / 360deg) * 40px), -90vh) rotate(var(--spin)) scale(.5); opacity: 0; }
+}
+.burst-tear { position: absolute; top: 40%; width: 10px; height: 16px; background: #7ec8e3; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border: 1.5px solid #3b8fc2; animation: tear-fall 1.4s ease-in both; }
+@keyframes tear-fall { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(50vh); opacity: 0; } }
+.mascot-cheer { animation: mascot-cheer .6s cubic-bezier(.3,1.5,.5,1) infinite alternate; }
+@keyframes mascot-cheer { 0% { transform: translateY(0) rotate(-4deg) scale(1); } 100% { transform: translateY(-22px) rotate(4deg) scale(1.06); } }
+.mascot-wince { animation: mascot-wince .5s ease-in-out 3; }
+@keyframes mascot-wince { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-10px) rotate(-3deg); } 75% { transform: translateX(10px) rotate(3deg); } }
+.amount-pop { animation: amount-pop .7s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes amount-pop { 0% { transform: scale(.2) translateY(30px); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1) translateY(0); } }
+.burst-win { animation: burst-fade 2.3s ease both; }
+.burst-lose { animation: burst-fade 2.3s ease both, screen-shake .5s ease-in-out 2; }
+@keyframes burst-fade { 0% { opacity: 0; } 8% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes screen-shake { 0%,100% { transform: translate(0,0); } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(6px, -3px); } 60% { transform: translate(-4px, -2px); } 80% { transform: translate(4px, 2px); } }

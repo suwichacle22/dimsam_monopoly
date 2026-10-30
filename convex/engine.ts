@@ -343,12 +343,14 @@ function applyEffect(s: Snapshot, seat: number, e: CardEffect, text: string) {
   switch (e.kind) {
     case "money": {
       const a = e.amount ?? 0;
+      s.events.push({ seat, kind: "card_money", text: String(a) });
       if (a >= 0) gain(s, seat, a, "การ์ด");
       else charge(s, seat, -a, "การ์ด");
       return;
     }
     case "collect_each": {
       const a = e.amount ?? 0;
+      s.events.push({ seat, kind: "card_money", text: String(a * s.players.filter((o) => o.seat !== seat && !o.bankrupt).length) });
       for (const o of s.players) {
         if (o.seat === seat || o.bankrupt) continue;
         o.cash -= a;
@@ -360,6 +362,7 @@ function applyEffect(s: Snapshot, seat: number, e: CardEffect, text: string) {
     case "skip": {
       p.skipTurns += e.turns ?? 1;
       log(s, "skip", `${p.name} พักกินขนม ${e.turns ?? 1} ตา`, seat);
+      if (e.amount) s.events.push({ seat, kind: "card_money", text: String(e.amount) });
       if (e.amount && e.amount < 0) charge(s, seat, -e.amount, "การ์ด");
       else if (e.amount && e.amount > 0) gain(s, seat, e.amount, "การ์ด");
       return;
@@ -488,6 +491,7 @@ export function roll(s: Snapshot, seat: number) {
     } else if (e.kind === "roll_threshold") {
       const th = e.threshold ?? 6;
       const amt = e.amount ?? 0;
+      s.events.push({ seat, kind: "card_money", text: String(sum >= th ? amt : -amt) });
       if (sum >= th) gain(s, seat, amt, `ทอยได้ ${sum}`);
       else charge(s, seat, amt, `ทอยได้ ${sum}`);
     }

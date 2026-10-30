@@ -6,6 +6,7 @@ import type { DimsamMood } from "~/art/Dimsam";
 import { Dimsam } from "~/art/Dimsam";
 import { Board, type TileFx } from "~/components/Board";
 import { CoinFlights, type Flight } from "~/components/CoinFlights";
+import { MoneyBurst, type Burst } from "~/components/MoneyBurst";
 import { ActionPanel } from "~/components/ActionPanel";
 import { PlayerPanel } from "~/components/PlayerPanel";
 import { EventLog } from "~/components/EventLog";
@@ -78,6 +79,8 @@ function Game({ token }: { token: string }) {
   const [tilt3d, setTilt3d] = useState(false);
   const [fx, setFx] = useState<TileFx[]>([]);
   const [flights, setFlights] = useState<Flight[]>([]);
+  const [burst, setBurst] = useState<Burst>(null);
+  const clearBurst = useCallback(() => setBurst(null), []);
   const fxKey = useRef(0);
   const pushFx = (index: number, kind: TileFx["kind"]) => {
     const key = ++fxKey.current;
@@ -183,6 +186,22 @@ function Game({ token }: { token: string }) {
       }
       setDisplayPos(finalPos);
       setWalking(false);
+      // card prize / penalty burst (both phones see it, from the card-drawer's point of view)
+      const cardMoney = fresh.filter((e) => e.kind === "card_money");
+      if (cardMoney.length) {
+        const seat = cardMoney[0].seat!;
+        const net = cardMoney.reduce((a, e) => a + Number(e.text), 0);
+        if (net !== 0) {
+          if (cardNow) await sleep(600);
+          if (cancelled) return;
+          setCard(null);
+          const p = v.players[seat];
+          setBurst({ id: actionAt, amount: net, label: net > 0 ? `${p.name} ได้รางวัล!` : `${p.name} โดนปรับ`, variant: p.variant });
+          play(net > 0 ? "prize" : "penalty");
+          await sleep(2300);
+          if (cancelled) return;
+        }
+      }
       // outcome effects, once the piece has arrived
       const mine = (e: { seat?: number }) => e.seat === v.me;
       for (const e of fresh) {
@@ -199,8 +218,8 @@ function Game({ token }: { token: string }) {
       else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
       else if (fresh.some((e) => e.kind === "build")) play("build");
       else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
-      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ"))) play("cash");
-      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย"))) play("pay");
+      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)"))) play("cash");
+      else if (fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
     })();
     return () => {
       cancelled = true;
@@ -288,6 +307,7 @@ function Game({ token }: { token: string }) {
         />
         <CoinFlights flights={flights} />
         {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} />}
+        <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />

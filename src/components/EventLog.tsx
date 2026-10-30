@@ -25,7 +25,7 @@ export function EventLog({ view, className }: { view: GameView; className?: stri
   }, [view.events.length]);
   return (
     <div ref={ref} className={cx("card p-3 overflow-y-auto text-sm flex flex-col gap-1", className)}>
-      {view.events.map((e) => (
+      {view.events.filter((e) => e.kind !== "card_money").map((e) => (
         <div key={e.id} className={cx("flex gap-2 leading-snug", e.kind === "finish" && "font-semibold text-berry", e.kind === "debt" && "text-berry")}>
           <span className="shrink-0 w-5 text-center">{ICON[e.kind] ?? "•"}</span>
           <span className="text-cocoa-2/90">{e.text}</span>
