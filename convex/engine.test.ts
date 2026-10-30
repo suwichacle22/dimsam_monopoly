@@ -19,6 +19,8 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
       builtThisTurn: 0,
       treasureDeck: cards.filter((c) => c.deck === "treasure").map((c) => c.id),
       specialDeck: cards.filter((c) => c.deck === "special").map((c) => c.id),
+      treasureDiscard: [],
+      specialDiscard: [],
       moves: [],
       actionAt: 0,
     },
@@ -340,11 +342,28 @@ describe("cards", () => {
     ]);
   });
 
-  test("decks rotate: the drawn card goes to the bottom", () => {
+  test("a drawn card leaves the deck for the discard pile", () => {
     const s = makeSnap([1, 1]);
     const first = s.game.treasureDeck[0];
+    const n = s.game.treasureDeck.length;
     E.roll(s, 0);
-    expect(s.game.treasureDeck[s.game.treasureDeck.length - 1]).toBe(first);
+    expect(s.game.treasureDeck).toHaveLength(n - 1);
+    expect(s.game.treasureDeck).not.toContain(first);
+    expect(s.game.treasureDiscard).toEqual([first]);
+  });
+
+  test("an empty deck is reshuffled from the discard pile", () => {
+    const s = makeSnap([1, 1], { rand: () => 0.3 });
+    s.cards = [
+      { id: "x", deck: "treasure", text: "x", effect: { kind: "money", amount: 1 } },
+      { id: "y", deck: "treasure", text: "y", effect: { kind: "money", amount: 1 } },
+    ];
+    s.game.treasureDeck = [];
+    s.game.treasureDiscard = ["x", "y"];
+    E.roll(s, 0);
+    expect(s.game.treasureDeck.length + s.game.treasureDiscard.length).toBe(2);
+    expect(s.game.treasureDiscard).toHaveLength(1);
+    expect(s.events.some((e) => e.kind === "shuffle")).toBe(true);
   });
 });
 

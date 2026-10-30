@@ -266,6 +266,8 @@ export const start = mutation({
       await ctx.db.patch(game._id, {
         treasureDeck: shuffle(cards.filter((c) => c.deck === "treasure").map((c) => c.id)) as Doc<"cards">["_id"][],
         specialDeck: shuffle(cards.filter((c) => c.deck === "special").map((c) => c.id)) as Doc<"cards">["_id"][],
+        treasureDiscard: [],
+        specialDiscard: [],
       });
       const loaded = await loadSnapshot(ctx, (await ctx.db.get(game._id))!);
       E.startGame(loaded.snap);
@@ -297,6 +299,31 @@ export const state = query({
         tiles: await getTiles(ctx),
         rules: await getRules(ctx),
         events: events.reverse().map((e) => ({ id: e._id, at: e.at, seat: e.seat, kind: e.kind, text: e.text })),
+      };
+    }),
+});
+
+/** Both decks: what has been drawn this cycle (in order) and what is still in the pile (order hidden). */
+export const decks = query({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) =>
+    wrap(async () => {
+      const me = await playerByToken(ctx, token);
+      const game = await ctx.db.get(me.gameId);
+      if (!game) throw new E.GameError("ไม่พบเกม");
+      const text = async (ids: Doc<"cards">["_id"][]) => {
+        const out: { id: string; text: string }[] = [];
+        for (const id of ids) {
+          const c = await ctx.db.get(id);
+          if (c) out.push({ id, text: c.text });
+        }
+        return out;
+      };
+      const remaining = async (ids: Doc<"cards">["_id"][]) => (await text(ids)).sort((a, b) => a.text.localeCompare(b.text, "th"));
+      return {
+        treasure: { drawn: await text(game.treasureDiscard ?? []), remaining: await remaining(game.treasureDeck) },
+        special: { drawn: await text(game.specialDiscard ?? []), remaining: await remaining(game.specialDeck) },
+        lastCard: game.lastCard,
       };
     }),
 });

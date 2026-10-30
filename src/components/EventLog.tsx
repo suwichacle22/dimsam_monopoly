@@ -17,6 +17,7 @@ const ICON: Record<string, string> = {
   tab: "📝",
   offset: "🔁",
   repay: "💵",
+  shuffle: "🔀",
   finish: "🏆",
   start: "🎉",
   move: "🐾",

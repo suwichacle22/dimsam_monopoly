@@ -8,6 +8,7 @@ import { Board, type TileFx } from "~/components/Board";
 import { CoinFlights, type Flight } from "~/components/CoinFlights";
 import { MoneyBurst, type Burst } from "~/components/MoneyBurst";
 import { TestPanel } from "~/components/TestPanel";
+import { DeckSheet } from "~/components/DeckSheet";
 import { ActionPanel } from "~/components/ActionPanel";
 import { PlayerPanel } from "~/components/PlayerPanel";
 import { EventLog } from "~/components/EventLog";
@@ -82,6 +83,7 @@ function Game({ token }: { token: string }) {
     return () => clearTimeout(id);
   }, [card]);
   const [sheet, setSheet] = useState<TileView | null>(null);
+  const [deckSheet, setDeckSheet] = useState<"treasure" | "special" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const lastActionRef = useRef<number | null>(null);
@@ -287,7 +289,7 @@ function Game({ token }: { token: string }) {
   // could still build a house where they stand (then they press build or จบตา themselves).
   // A successful land/house purchase or a build always ends the turn.
   const [autoEnding, setAutoEnding] = useState(false);
-  const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !rolling && !walking && !card && !burst && !sheet && !pendingAction;
+  const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !rolling && !walking && !card && !burst && !sheet && !deckSheet && !pendingAction;
   const autoEnabled = !!view && view.rules.autoEndTurn && !view.players[view.me]?.bot;
   useEffect(() => {
     if (!settled || !autoEnabled || !view) {
@@ -353,7 +355,7 @@ function Game({ token }: { token: string }) {
   useEffect(() => {
     if (!gaugePhase) setSpaceHeld(false);
   }, [gaugePhase]);
-  useHotkey("Escape", () => { setSheet(null); setCard(null); }, { enabled: !!sheet || !!card });
+  useHotkey("Escape", () => { setSheet(null); setCard(null); setDeckSheet(null); }, { enabled: !!sheet || !!card || !!deckSheet });
 
   if (!view) return <div className="min-h-dvh flex items-center justify-center text-cocoa/60">กำลังโหลดกระดาน…</div>;
   const mood: DimsamMood =
@@ -408,6 +410,7 @@ function Game({ token }: { token: string }) {
           tilt={tilt3d ? 14 : 0}
           fx={fx}
           onTileClick={(t) => setSheet(t)}
+          onPileClick={(d) => setDeckSheet(d)}
         />
         <CoinFlights flights={flights} />
         {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} />}
@@ -429,6 +432,9 @@ function Game({ token }: { token: string }) {
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
         <div className="flex justify-between items-center text-xs text-cocoa/50 px-1">
           <Link to="/settings">ตั้งค่า</Link>
+          <button className="px-2 py-1 rounded-lg border border-cocoa/20" onClick={() => setDeckSheet("treasure")}>
+            🃏 ดูการ์ด
+          </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
             onClick={() => {
@@ -473,6 +479,7 @@ function Game({ token }: { token: string }) {
         onSellLand={(i) => run(() => m.sellLand({ token, tileIndex: i }))}
       />
       <CardToast card={card ?? null} onClose={() => setCard(null)} />
+      {deckSheet && <DeckSheet token={token} initial={deckSheet} onClose={() => setDeckSheet(null)} />}
 
       {view.game.status === "finished" && !busy && (
         <div className="fixed inset-0 z-50 bg-cocoa-2/50 flex items-center justify-center p-6">

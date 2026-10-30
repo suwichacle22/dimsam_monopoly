@@ -42,6 +42,8 @@ export type GameState = {
   pending?: Pending;
   treasureDeck: string[];
   specialDeck: string[];
+  treasureDiscard: string[];
+  specialDiscard: string[];
   lastCard?: { deck: string; text: string; seat: number; at: number };
   /** every position change made by the last action, in order (for animation) */
   moves: { seat: number; from: number; to: number; teleport: boolean }[];
@@ -327,12 +329,27 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
 
 // ── cards ────────────────────────────────────────────────────────────────
 
+function shuffleWith<T>(arr: T[], rand: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function drawCard(s: Snapshot, seat: number, deck: "treasure" | "special") {
-  const key = deck === "treasure" ? "treasureDeck" : "specialDeck";
-  const ids = s.game[key];
-  if (ids.length === 0) return;
+  const ids = deck === "treasure" ? s.game.treasureDeck : s.game.specialDeck;
+  const discard = deck === "treasure" ? s.game.treasureDiscard : s.game.specialDiscard;
+  const label = deck === "treasure" ? "หีบขนม" : "ถุงของเล่น";
+  if (ids.length === 0) {
+    if (discard.length === 0) return;
+    ids.push(...shuffleWith(discard, s.rand ?? Math.random));
+    discard.length = 0;
+    log(s, "shuffle", `การ์ด${label}หมดกอง สับใหม่ทั้ง ${ids.length} ใบ`, seat);
+  }
   const id = ids.shift()!;
-  ids.push(id);
+  discard.push(id);
   const card = s.cards.find((c) => c.id === id);
   if (!card) return;
   s.game.lastCard = { deck, text: card.text, seat, at: s.now };

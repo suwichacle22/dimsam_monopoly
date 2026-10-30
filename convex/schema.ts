@@ -128,6 +128,9 @@ export default defineSchema({
     pending: v.optional(pending),
     treasureDeck: v.array(v.id("cards")),
     specialDeck: v.array(v.id("cards")),
+    /** cards already drawn this cycle, in draw order; reshuffled back when the deck runs out */
+    treasureDiscard: v.optional(v.array(v.id("cards"))),
+    specialDiscard: v.optional(v.array(v.id("cards"))),
     lastCard: v.optional(v.object({ deck: v.string(), text: v.string(), seat: v.number(), at: v.number() })),
     moves: v.array(v.object({ seat: v.number(), from: v.number(), to: v.number(), teleport: v.boolean() })),
     actionAt: v.number(),

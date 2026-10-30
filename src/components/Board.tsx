@@ -36,6 +36,7 @@ export function Board({
   tilt = 0,
   fx = [],
   onTileClick,
+  onPileClick,
 }: {
   view: GameView;
   displayPos: number[];
@@ -51,6 +52,7 @@ export function Board({
   /** one-shot tile effects (landing pop, bought stamp, house drop) */
   fx?: TileFx[];
   onTileClick: (tile: TileView) => void;
+  onPileClick?: (deck: "treasure" | "special") => void;
 }) {
   const me = view.players.find((p) => p.seat === view.me);
   const current = view.players[view.game.turn];
@@ -105,11 +107,11 @@ export function Board({
             </div>
           )}
           <div className={cx("z-[1] flex items-end justify-between w-full gap-2", !!overlay && "hidden sm:flex")}>
-            <Pile count={view.game.treasureCount} label="หีบขนม">
+            <Pile count={view.game.treasureCount} label="หีบขนม" onClick={() => onPileClick?.("treasure")}>
               <C.TileTreasure animate={false} />
             </Pile>
             <Dice values={dice} rolling={rolling} size={44} />
-            <Pile count={view.game.specialCount} label="ถุงของเล่น">
+            <Pile count={view.game.specialCount} label="ถุงของเล่น" onClick={() => onPileClick?.("special")}>
               <C.TileToyBag animate={false} />
             </Pile>
           </div>
@@ -152,18 +154,18 @@ export function Board({
   );
 }
 
-function Pile({ children, count, label }: { children: React.ReactNode; count: number; label: string }) {
+function Pile({ children, count, label, onClick }: { children: React.ReactNode; count: number; label: string; onClick?: () => void }) {
   return (
-    <div className="flex flex-col items-center w-[22%] max-w-[90px]">
+    <button type="button" onClick={onClick} className="flex flex-col items-center w-[22%] max-w-[90px] active:translate-y-[1px] focus:outline-none" title="ดูการ์ดในกอง">
       <div className="relative w-full aspect-square">
         <div className="absolute inset-0 translate-x-[4%] translate-y-[4%] rounded-lg bg-white border border-cocoa/30" />
         <div className="absolute inset-0 translate-x-[2%] translate-y-[2%] rounded-lg bg-white border border-cocoa/30" />
         <div className="absolute inset-0 rounded-lg bg-white border border-cocoa/40 overflow-hidden">{children}</div>
       </div>
       <span className="text-[clamp(8px,1.3vw,11px)] text-cocoa/60 mt-1">
-        {label} {count}
+        {label} เหลือ {count}
       </span>
-    </div>
+    </button>
   );
 }
 
