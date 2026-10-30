@@ -21,6 +21,7 @@ import { setSession, useSession } from "~/lib/session";
 import { errorMessage } from "~/lib/format";
 import { isMuted, play, setMuted, unlockAudio } from "~/lib/sound";
 import { useHotkey } from "@tanstack/react-hotkeys";
+import { ThemeToggle } from "~/components/ThemeToggle";
 
 export const Route = createFileRoute("/game")({ component: GamePage });
 
@@ -430,10 +431,10 @@ function Game({ token }: { token: string }) {
           />
         )}
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
-        <div className="flex justify-between items-center text-xs text-cocoa/50 px-1">
+        <div className="flex justify-between items-center gap-1 text-xs text-cocoa/50 px-1 whitespace-nowrap">
           <Link to="/settings">ตั้งค่า</Link>
-          <button className="px-2 py-1 rounded-lg border border-cocoa/20" onClick={() => setDeckSheet("treasure")}>
-            🃏 ดูการ์ด
+          <button className="px-2 py-1 rounded-lg border border-cocoa/20" onClick={() => setDeckSheet("treasure")} title="ดูการ์ด">
+            🃏<span className="hidden sm:inline"> ดูการ์ด</span>
           </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
@@ -443,7 +444,7 @@ function Game({ token }: { token: string }) {
               localStorage.setItem("dimsam.3d", next ? "1" : "0");
             }}
           >
-            {tilt3d ? "🎲 มุมมอง 3D" : "▭ มุมมองแบน"}
+            {tilt3d ? "🎲" : "▭"}<span className="hidden sm:inline">{tilt3d ? " มุมมอง 3D" : " มุมมองแบน"}</span>
           </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
@@ -454,8 +455,9 @@ function Game({ token }: { token: string }) {
               if (!next) play("tap");
             }}
           >
-            {muted ? "🔇 ปิดเสียงอยู่" : "🔊 เสียงเปิด"}
+            {muted ? "🔇" : "🔊"}<span className="hidden sm:inline">{muted ? " ปิดเสียงอยู่" : " เสียงเปิด"}</span>
           </button>
+          <ThemeToggle compact />
           <button
             onClick={() => {
               if (confirm("ออกจากห้องบนเครื่องนี้? (เกมยังอยู่ กลับเข้ามาใหม่ได้ด้วยรหัสห้อง)")) {
@@ -482,7 +484,7 @@ function Game({ token }: { token: string }) {
       {deckSheet && <DeckSheet token={token} initial={deckSheet} onClose={() => setDeckSheet(null)} />}
 
       {view.game.status === "finished" && !busy && (
-        <div className="fixed inset-0 z-50 bg-cocoa-2/50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-scrim/60 flex items-center justify-center p-6">
           <div className="card p-6 max-w-sm w-full text-center flex flex-col items-center gap-3 pop-in">
             <div className="w-40 h-40">
               <Dimsam mood={view.game.winner === view.me ? "happy" : "sad"} variant={me?.variant} />

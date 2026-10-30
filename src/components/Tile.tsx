@@ -37,7 +37,7 @@ export const Tile = memo(function Tile({
       onClick={onClick}
       style={{ gridRow: pos.row, gridColumn: pos.col, ["--owner" as string]: ownerColor }}
       className={cx(
-        "tile relative bg-white border border-cocoa/25 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel",
+        "tile relative bg-paper border border-cocoa/25 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel",
         "flex min-w-0 min-h-0",
         fx?.kind === "land" && "tile-land",
         fx?.kind === "buy" && "tile-buy",

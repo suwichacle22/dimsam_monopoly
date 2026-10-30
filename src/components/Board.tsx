@@ -68,7 +68,7 @@ export function Board({
         }}
       >
       <div
-        className={cx("grid w-full h-full bg-cream-2 rounded-2xl border-2 border-cocoa/30 shadow-[0_8px_0_rgba(107,74,43,0.12)]", tilt ? "board-3d" : "overflow-hidden")}
+        className={cx("grid w-full h-full bg-cream-2 rounded-2xl border-2 border-cocoa/30 shadow-[0_8px_0_rgba(var(--shadow-ink),0.12)]", tilt ? "board-3d" : "overflow-hidden")}
         style={{ gridTemplateColumns: "1.5fr repeat(9, 1fr) 1.5fr", gridTemplateRows: "1.5fr repeat(9, 1fr) 1.5fr", transformStyle: tilt ? "preserve-3d" : undefined }}
       >
         {view.tiles.map((tile) => {
@@ -158,9 +158,9 @@ function Pile({ children, count, label, onClick }: { children: React.ReactNode; 
   return (
     <button type="button" onClick={onClick} className="flex flex-col items-center w-[22%] max-w-[90px] active:translate-y-[1px] focus:outline-none" title="ดูการ์ดในกอง">
       <div className="relative w-full aspect-square">
-        <div className="absolute inset-0 translate-x-[4%] translate-y-[4%] rounded-lg bg-white border border-cocoa/30" />
-        <div className="absolute inset-0 translate-x-[2%] translate-y-[2%] rounded-lg bg-white border border-cocoa/30" />
-        <div className="absolute inset-0 rounded-lg bg-white border border-cocoa/40 overflow-hidden">{children}</div>
+        <div className="absolute inset-0 translate-x-[4%] translate-y-[4%] rounded-lg bg-paper border border-cocoa/30" />
+        <div className="absolute inset-0 translate-x-[2%] translate-y-[2%] rounded-lg bg-paper border border-cocoa/30" />
+        <div className="absolute inset-0 rounded-lg bg-paper border border-cocoa/40 overflow-hidden">{children}</div>
       </div>
       <span className="text-[clamp(8px,1.3vw,11px)] text-cocoa/60 mt-1">
         {label} เหลือ {count}
@@ -174,7 +174,7 @@ function PawField() {
   return (
     <svg viewBox="0 0 100 100" className="w-full h-full">
       {paws.map((p, i) => (
-        <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.r}) scale(0.5)`} fill="#6b4a2b">
+        <g key={i} transform={`translate(${p.x} ${p.y}) rotate(${p.r}) scale(0.5)`} className="fill-cocoa">
           <ellipse cx="0" cy="3" rx="4.5" ry="3.8" />
           <circle cx="-4.6" cy="-2.5" r="1.7" />
           <circle cx="-1.6" cy="-4.6" r="1.7" />

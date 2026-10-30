@@ -59,7 +59,7 @@ export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolea
   return (
     <div className="flex flex-col items-center gap-1 select-none">
       <svg viewBox="0 0 200 118" className="w-full max-w-[230px]" aria-hidden>
-        <path d={arc} stroke="rgba(107,74,43,.18)" strokeWidth="12" fill="none" strokeLinecap="round" />
+        <path d={arc} className="stroke-cocoa/20" strokeWidth="12" fill="none" strokeLinecap="round" />
         <path d={arc} stroke="url(#rg-grad)" strokeWidth="8" fill="none" strokeLinecap="round" opacity={aiming ? 1 : 0.45} />
         <defs>
           <linearGradient id="rg-grad" x1="0" x2="1">
@@ -73,8 +73,8 @@ export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolea
           const big = i === 0 || i === 5 || i === 10;
           return (
             <g key={i}>
-              <circle cx={pt.x} cy={pt.y} r={big ? 3 : 1.8} fill="#6b4a2b" opacity={0.5} />
-              <text x={CX + (R + 14) * Math.cos(Math.PI + (i / 10) * Math.PI)} y={CY + (R + 14) * Math.sin(Math.PI + (i / 10) * Math.PI) + 4} textAnchor="middle" fontSize={big ? 12 : 9} fontWeight={big ? 700 : 500} fill="#6b4a2b" opacity={big ? 0.9 : 0.55} fontFamily="Mitr, sans-serif">
+              <circle cx={pt.x} cy={pt.y} r={big ? 3 : 1.8} className="fill-cocoa" opacity={0.5} />
+              <text x={CX + (R + 14) * Math.cos(Math.PI + (i / 10) * Math.PI)} y={CY + (R + 14) * Math.sin(Math.PI + (i / 10) * Math.PI) + 4} textAnchor="middle" fontSize={big ? 12 : 9} fontWeight={big ? 700 : 500} className="fill-cocoa" opacity={big ? 0.9 : 0.55} fontFamily="Mitr, sans-serif">
                 {i + 2}
               </text>
             </g>
@@ -86,7 +86,7 @@ export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolea
             <circle cx={m.x} cy={m.y} r="6" fill="#fff" stroke="#e0a458" strokeWidth="2.5" />
           </>
         )}
-        <text x={CX} y={CY - 10} textAnchor="middle" fontSize={aiming ? 34 : 13} fontWeight={700} fill={aiming ? "#6b4a2b" : "rgba(107,74,43,.55)"} fontFamily="Mitr, sans-serif">
+        <text x={CX} y={CY - 10} textAnchor="middle" fontSize={aiming ? 34 : 13} fontWeight={700} className="fill-cocoa" opacity={aiming ? 1 : 0.55} fontFamily="Mitr, sans-serif">
           {aiming ? target : "กดค้างเพื่อเล็ง"}
         </text>
       </svg>

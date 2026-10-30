@@ -35,7 +35,7 @@ export function TileSheet({
   const monopoly = prop && tile.group ? hasMonopoly(view, prop.ownerSeat, tile.group) : false;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-cocoa-2/40" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-scrim/50" onClick={onClose}>
       <div className="card w-full sm:max-w-md max-h-[88dvh] overflow-y-auto rounded-b-none sm:rounded-b-3xl pop-in" onClick={(e) => e.stopPropagation()}>
         <div style={{ background: band }} className="h-3 rounded-t-3xl" />
         <div className="p-4 flex gap-4">

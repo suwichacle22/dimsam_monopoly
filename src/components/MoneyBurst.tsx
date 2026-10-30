@@ -55,10 +55,10 @@ export function MoneyBurst({ burst, onDone }: { burst: Burst; onDone: () => void
         className={cx(
           "burst-card relative w-[86%] max-w-[380px] rounded-3xl border-[3px] overflow-hidden flex flex-col items-center gap-1 px-5 pt-3 pb-5",
           win
-            ? "bg-[#fff8e1] border-[#f5c518] shadow-[0_10px_0_#d9a900,0_24px_60px_rgba(74,49,25,.4)]"
+            ? "bg-[#fff8e1] dark:bg-[#352b10] border-[#f5c518] shadow-[0_10px_0_#d9a900,0_24px_60px_rgba(74,49,25,.4)]"
             : tab
-              ? "bg-[#fff4ea] border-[#f08a2b] shadow-[0_10px_0_#b8621a,0_24px_60px_rgba(74,49,25,.4)]"
-              : "bg-[#fff0f4] border-berry shadow-[0_10px_0_#a22d5a,0_24px_60px_rgba(74,49,25,.4)]",
+              ? "bg-[#fff4ea] dark:bg-[#36220f] border-[#f08a2b] shadow-[0_10px_0_#b8621a,0_24px_60px_rgba(74,49,25,.4)]"
+              : "bg-[#fff0f4] dark:bg-[#361620] border-berry shadow-[0_10px_0_#a22d5a,0_24px_60px_rgba(74,49,25,.4)]",
         )}
       >
         <div className={cx("self-stretch -mx-5 -mt-3 mb-1 py-2 text-center font-bold text-white text-base sm:text-lg tracking-wide", win ? "bg-[#f5c518] text-[#5a4500]" : tab ? "bg-[#f08a2b]" : "bg-berry")}>
@@ -68,7 +68,7 @@ export function MoneyBurst({ burst, onDone }: { burst: Burst; onDone: () => void
           <Dimsam mood={win ? "happy" : tab ? "think" : "sad"} variant={shown.variant} />
         </div>
         <div
-          className={cx("amount-pop font-bold tabular-nums", win ? "text-[#2e8b2e]" : tab ? "text-[#b8621a]" : "text-berry")}
+          className={cx("amount-pop font-bold tabular-nums", win ? "text-[#2e8b2e] dark:text-[#8fe08f]" : tab ? "text-[#b8621a] dark:text-[#ffb070]" : "text-berry")}
           style={{ fontSize: "clamp(40px, 8vw, 64px)", lineHeight: 1, textShadow: "0 4px 0 rgba(0,0,0,.12)" }}
         >
           {tab ? "" : win ? "+" : "-"}

@@ -19,7 +19,7 @@ function Face({ n, size, transform }: { n: number; size: number; transform: stri
       {[0, 1, 2].flatMap((r) =>
         [0, 1, 2].map((c) => {
           const on = PIPS[n]?.some(([pr, pc]) => pr === r && pc === c);
-          return <span key={`${r}${c}`} className={cx("rounded-full bg-cocoa-2", on ? "opacity-100" : "opacity-0")} />;
+          return <span key={`${r}${c}`} className={cx("rounded-full bg-[#4a3119]", on ? "opacity-100" : "opacity-0")} />;
         }),
       )}
     </div>
@@ -74,7 +74,7 @@ export function Dice({ values, rolling, size = 56 }: { values: number[]; rolling
           >
             {faces}
           </div>
-          <div className="absolute left-[10%] right-[10%] -bottom-[14%] h-[16%] rounded-full bg-cocoa/25 blur-[2px]" style={{ transform: "translateZ(-1px)" }} />
+          <div className="absolute left-[10%] right-[10%] -bottom-[14%] h-[16%] rounded-full bg-scrim/30 blur-[2px]" style={{ transform: "translateZ(-1px)" }} />
         </div>
       ))}
     </div>

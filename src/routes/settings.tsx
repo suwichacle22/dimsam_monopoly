@@ -7,6 +7,7 @@ import { RULE_LABELS, type CardEffect, type Rules } from "../../convex/defaults"
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import { useSession } from "~/lib/session";
 import { cx, errorMessage, GROUP_COLORS, TYPE_LABEL } from "~/lib/format";
+import { ThemeToggle } from "~/components/ThemeToggle";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -42,9 +43,12 @@ function Settings({ password }: { password: string }) {
     <main className="max-w-5xl mx-auto p-3 sm:p-6 flex flex-col gap-4">
       <header className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-cocoa">ตั้งค่าเกม</h1>
-        <Link to="/" className="btn-secondary text-sm">
-          กลับหน้าห้อง
-        </Link>
+        <div className="flex items-center gap-2 text-sm text-cocoa/70">
+          <ThemeToggle className="text-xs" />
+          <Link to="/" className="btn-secondary text-sm">
+            กลับหน้าห้อง
+          </Link>
+        </div>
       </header>
       <p className="text-sm text-cocoa/70">ทุกอย่างในนี้แก้ได้เลย มีผลกับเกมถัดไป (และค่าเช่า/กติกาจะมีผลกับเกมที่กำลังเล่นทันที)</p>
       <nav className="flex gap-2">

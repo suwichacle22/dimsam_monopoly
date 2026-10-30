@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Dimsam, DimsamToken } from "~/art/Dimsam";
 import { setSession, useSession } from "~/lib/session";
 import { cx, errorMessage } from "~/lib/format";
+import { ThemeToggle } from "~/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -20,16 +21,19 @@ function Home() {
 function Shell({ children, mood = "idle" }: { children: React.ReactNode; mood?: "idle" | "happy" | "think" }) {
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center p-5 gap-4">
-      <div className="w-40 h-40 sm:w-52 sm:h-52 drop-shadow-[0_8px_0_rgba(107,74,43,0.15)]">
+      <div className="w-40 h-40 sm:w-52 sm:h-52 drop-shadow-[0_8px_0_rgba(var(--shadow-ink),0.15)]">
         <Dimsam mood={mood} />
       </div>
       <h1 className="text-3xl sm:text-4xl font-bold text-cocoa tracking-tight">Dimsam Monopoly</h1>
-      <div className="w-full max-w-sm bg-white rounded-3xl border-2 border-cocoa/15 shadow-[0_6px_0_rgba(107,74,43,0.12)] p-5 flex flex-col gap-4">
+      <div className="w-full max-w-sm bg-paper rounded-3xl border-2 border-cocoa/15 shadow-[0_6px_0_rgba(var(--shadow-ink),0.12)] p-5 flex flex-col gap-4">
         {children}
       </div>
-      <Link to="/settings" className="text-sm text-cocoa/60 underline underline-offset-4">
-        ตั้งค่ากติกา / แผนที่ / การ์ด
-      </Link>
+      <div className="flex items-center gap-4 text-sm text-cocoa/60">
+        <Link to="/settings" className="underline underline-offset-4">
+          ตั้งค่ากติกา / แผนที่ / การ์ด
+        </Link>
+        <ThemeToggle className="text-xs" />
+      </div>
     </main>
   );
 }
@@ -128,7 +132,7 @@ function Lobby({ password }: { password: string }) {
                 onClick={() => setVariant(v)}
                 className={cx(
                   "flex-1 rounded-2xl border-2 p-2 flex flex-col items-center gap-1 transition",
-                  variant === v ? "border-caramel bg-cream-2" : "border-cocoa/15 bg-white",
+                  variant === v ? "border-caramel bg-cream-2" : "border-cocoa/15 bg-paper",
                 )}
               >
                 <div className="w-16 h-16">

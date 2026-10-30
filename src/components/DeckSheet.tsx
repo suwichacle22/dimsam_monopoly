@@ -15,7 +15,7 @@ export function DeckSheet({ token, initial, onClose }: { token: string; initial:
   const last = d?.drawn[d.drawn.length - 1];
   const treasure = deck === "treasure";
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-cocoa-2/40" onClick={onClose}>
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-scrim/50" onClick={onClose}>
       <div className="card w-full sm:max-w-md max-h-[88dvh] flex flex-col rounded-b-none sm:rounded-b-3xl pop-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex gap-2 p-3 pb-0">
           {(["treasure", "special"] as Deck[]).map((k) => (
@@ -42,7 +42,7 @@ export function DeckSheet({ token, initial, onClose }: { token: string; initial:
             <>
               <section className="rounded-2xl border-2 overflow-hidden" style={{ borderColor: treasure ? "#f2c66d" : "#ffd66b", background: treasure ? "#5f8f6b" : "#8b6fd1" }}>
                 <div className="px-3 pt-2 text-white/90 text-xs font-semibold">ใบล่าสุดที่จั่ว</div>
-                <div className="m-2 mt-1 bg-white/95 rounded-xl p-3 text-cocoa-2 text-sm leading-relaxed min-h-[52px]">
+                <div className="m-2 mt-1 bg-paper/95 rounded-xl p-3 text-cocoa-2 text-sm leading-relaxed min-h-[52px]">
                   {last ? last.text : <span className="text-cocoa/50">ยังไม่มีใครจั่วกองนี้ในรอบนี้</span>}
                 </div>
               </section>
@@ -71,7 +71,7 @@ export function DeckSheet({ token, initial, onClose }: { token: string; initial:
                 </h3>
                 <ul className="flex flex-col gap-1">
                   {d.remaining.map((c) => (
-                    <li key={c.id} className="text-sm rounded-xl px-3 py-[6px] border border-cocoa/10 text-cocoa-2/90 bg-white">
+                    <li key={c.id} className="text-sm rounded-xl px-3 py-[6px] border border-cocoa/10 text-cocoa-2/90 bg-paper">
                       {c.text}
                     </li>
                   ))}

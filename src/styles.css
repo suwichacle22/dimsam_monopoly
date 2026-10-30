@@ -11,7 +11,34 @@
   --color-grass: #a8d672;
   --color-blush: #f7a1c4;
   --color-berry: #d9487e;
+  --color-paper: #ffffff;   /* cards, sheets, tiles */
+  --color-pill: #6b4a2b;    /* solid dark badges that carry white text */
+  --color-scrim: #4a3119;   /* modal backdrops */
   --font-sans: "Mitr", "Noto Sans Thai", "Prompt", system-ui, sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Shadow tint used by every "0 Npx 0 rgba(...)" shadow; cocoa in light, black in dark. */
+:root { --shadow-ink: 107, 74, 43; color-scheme: light; }
+
+/* Dark theme: a warm, cocoa-black night version of the same palette. Art keeps its own colours. */
+.dark {
+  color-scheme: dark;
+  --color-cream: #1a1210;
+  --color-cream-2: #2a1d14;
+  --color-peach: #d9915f;
+  --color-caramel: #f0b05e;
+  --color-cocoa: #f1dfc6;
+  --color-cocoa-2: #fbeedc;
+  --color-sky: #7cc3ea;
+  --color-grass: #96c866;
+  --color-blush: #f39ac0;
+  --color-berry: #ff7aa8;
+  --color-paper: #2e221a;
+  --color-pill: #5b4432;
+  --color-scrim: #000000;
+  --shadow-ink: 0, 0, 0;
 }
 
 html, body { height: 100%; }
@@ -33,13 +60,13 @@ body {
     @apply rounded-2xl bg-caramel text-white font-semibold px-5 py-3 text-lg shadow-[0_4px_0_#b9803a] active:translate-y-[2px] active:shadow-[0_2px_0_#b9803a] transition disabled:opacity-40 disabled:shadow-none disabled:translate-y-0;
   }
   .btn-secondary {
-    @apply rounded-2xl bg-white text-cocoa font-semibold px-4 py-2 border-2 border-cocoa/20 shadow-[0_3px_0_rgba(107,74,43,0.2)] active:translate-y-[2px] active:shadow-none transition disabled:opacity-40;
+    @apply rounded-2xl bg-paper text-cocoa font-semibold px-4 py-2 border-2 border-cocoa/20 shadow-[0_3px_0_rgba(var(--shadow-ink),0.2)] active:translate-y-[2px] active:shadow-none transition disabled:opacity-40;
   }
   .btn-danger {
     @apply rounded-2xl bg-berry text-white font-semibold px-4 py-2 shadow-[0_3px_0_#a22d5a] active:translate-y-[2px] active:shadow-none transition disabled:opacity-40;
   }
   .card {
-    @apply bg-white rounded-3xl border-2 border-cocoa/15 shadow-[0_6px_0_rgba(107,74,43,0.12)];
+    @apply bg-paper rounded-3xl border-2 border-cocoa/15 shadow-[0_6px_0_rgba(var(--shadow-ink),0.12)];
   }
 }
 
@@ -98,20 +125,20 @@ body {
 
 @layer components {
   .input {
-    @apply rounded-xl border-2 border-cocoa/20 bg-white px-3 py-2 text-base focus:outline-none focus:border-caramel;
+    @apply rounded-xl border-2 border-cocoa/20 bg-paper px-3 py-2 text-base focus:outline-none focus:border-caramel;
   }
 }
 
 /* ── board 3D & tile gimmicks ─────────────────────────────────────────── */
 .board-3d .tile { transform-style: preserve-3d; transition: transform .25s ease, box-shadow .25s ease; }
-.board-3d .tile:hover { transform: translateZ(10px); box-shadow: 0 10px 14px rgba(74,49,25,.25); z-index: 2; }
+.board-3d .tile:hover { transform: translateZ(10px); box-shadow: 0 10px 14px rgba(var(--shadow-ink),.25); z-index: 2; }
 .tile { overflow: visible; }
 .tile > * { overflow: hidden; }
 .tile > .sparkles, .tile > .bought { overflow: visible; }
 .tile.tile-land, .tile.tile-build { animation: tile-land .55s cubic-bezier(.2,.9,.3,1.2) both; z-index: 6; }
 @keyframes tile-land {
   0% { transform: scale(1) translateZ(0); }
-  35% { transform: scale(1.16) translateZ(18px); box-shadow: 0 14px 18px rgba(74,49,25,.3); }
+  35% { transform: scale(1.16) translateZ(18px); box-shadow: 0 14px 18px rgba(var(--shadow-ink),.3); }
   100% { transform: scale(1) translateZ(0); }
 }
 .sparkles { position: absolute; inset: 0; pointer-events: none; }

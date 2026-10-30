@@ -65,7 +65,7 @@ function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerV
         </span>
       </div>
       {p.debt > 0 && (
-        <div className="flex items-center gap-2 text-[12px] bg-[#fff1e6] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
+        <div className="flex items-center gap-2 text-[12px] bg-[#fff1e6] dark:bg-[#3a2416] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
           <span className="text-[#b8621a]">
             ติดหนี้ <b>{view.players.find((o) => o.seat !== p.seat)?.name}</b> <b className="tabular-nums">{baht(p.debt)}</b>
           </span>
@@ -102,7 +102,7 @@ function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerV
                   return Art ? <Art animate={false} /> : null;
                 })()}
                 {(prop.landmark || prop.houses > 0) && (
-                  <span className="absolute right-0 bottom-0 bg-cocoa text-white text-[9px] leading-none px-[3px] py-[1px] rounded-tl-md">
+                  <span className="absolute right-0 bottom-0 bg-pill text-white text-[9px] leading-none px-[3px] py-[1px] rounded-tl-md">
                     {prop.landmark ? "★" : prop.houses}
                   </span>
                 )}

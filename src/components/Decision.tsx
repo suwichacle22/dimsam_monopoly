@@ -86,7 +86,7 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
                   key={t.index}
                   disabled={disabled}
                   onClick={() => actions.worldTour(t.index)}
-                  className="flex items-center gap-1 rounded-lg border border-cocoa/20 bg-white px-2 py-1 text-sm active:translate-y-[1px]"
+                  className="flex items-center gap-1 rounded-lg border border-cocoa/20 bg-paper px-2 py-1 text-sm active:translate-y-[1px]"
                 >
                   <span className="w-6 h-6 rounded overflow-hidden">{Art && <Art animate={false} />}</span>
                   {t.name}
@@ -156,8 +156,8 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
 
 function Card({ band, title, children }: { band: string; title?: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-cocoa-2/30 backdrop-blur-[1px]">
-      <div className="decision-card w-full sm:w-[440px] max-h-[88dvh] overflow-y-auto bg-white border-2 border-cocoa/25 rounded-t-3xl sm:rounded-3xl shadow-[0_-10px_40px_rgba(74,49,25,0.3)] sm:shadow-[0_10px_0_rgba(107,74,43,0.15),0_24px_60px_rgba(74,49,25,0.35)] flex flex-col">
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-scrim/40 backdrop-blur-[1px]">
+      <div className="decision-card w-full sm:w-[440px] max-h-[88dvh] overflow-y-auto bg-paper border-2 border-cocoa/25 rounded-t-3xl sm:rounded-3xl shadow-[0_-10px_40px_rgba(74,49,25,0.3)] sm:shadow-[0_10px_0_rgba(107,74,43,0.15),0_24px_60px_rgba(74,49,25,0.35)] flex flex-col">
         <div className="sm:hidden w-11 h-[5px] rounded-full bg-cocoa/25 mx-auto mt-2" />
         <div style={{ background: band }} className="hidden sm:block h-[10px] shrink-0 rounded-t-3xl" />
         <div className="p-4 sm:p-5 flex flex-col gap-3">
@@ -182,7 +182,7 @@ function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "gr
         "flex-1 rounded-2xl px-4 py-3 font-semibold text-base flex justify-between gap-2 transition active:translate-y-[2px] active:shadow-none disabled:opacity-40",
         tone === "primary" && "bg-caramel text-white shadow-[0_4px_0_#b9803a]",
         tone === "green" && "bg-[#5cb85c] text-white shadow-[0_4px_0_#3f8f3f]",
-        tone === "ghost" && "bg-white text-cocoa border-2 border-cocoa/20 shadow-[0_3px_0_rgba(107,74,43,0.2)]",
+        tone === "ghost" && "bg-paper text-cocoa border-2 border-cocoa/20 shadow-[0_3px_0_rgba(var(--shadow-ink),0.2)]",
         tone === "danger" && "bg-berry text-white shadow-[0_4px_0_#a22d5a]",
         tone === "tab" && "bg-[#f08a2b] text-white shadow-[0_4px_0_#b8621a]",
       )}
