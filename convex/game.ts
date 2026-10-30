@@ -38,7 +38,8 @@ const publicPlayer = (p: Doc<"players">) => ({
   jailTurns: p.jailTurns,
   skipTurns: p.skipTurns,
   bankrupt: p.bankrupt,
-  online: Date.now() - p.lastSeen < 45_000,
+  bot: p.bot ?? false,
+  online: p.bot ? true : Date.now() - p.lastSeen < 45_000,
 });
 
 export const checkRoom = query({
@@ -121,6 +122,99 @@ export const join = mutation({
         lastSeen: Date.now(),
       });
       return { token, gameId: game._id, seat };
+    }),
+});
+
+/** Solo test mode: fill the other seat with a bot that plays by itself. */
+export const addBot = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) =>
+    wrap(async () => {
+      const me = await playerByToken(ctx, token);
+      const game = await ctx.db.get(me.gameId);
+      if (!game || game.status !== "lobby") throw new E.GameError("เพิ่มบอทได้เฉพาะตอนอยู่ในห้องรอ");
+      const players = await gamePlayers(ctx, game._id);
+      const seat = me.seat === 0 ? 1 : 0;
+      if (players.some((p) => p.seat === seat)) throw new E.GameError("ที่นั่งนั้นมีคนแล้ว");
+      await ctx.db.insert("players", {
+        gameId: game._id,
+        seat,
+        name: "บอทติ่มซำ",
+        variant: me.variant === "blue" ? "pink" : "blue",
+        token: newToken(),
+        cash: 0,
+        position: 0,
+        inJail: false,
+        jailTurns: 0,
+        skipTurns: 0,
+        bankrupt: false,
+        bot: true,
+        lastSeen: Date.now(),
+      });
+    }),
+});
+
+/** One decision for the bot, called by the human's browser while it is the bot's turn. */
+export const botStep = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) =>
+    wrap(async () => {
+      const me = await playerByToken(ctx, token);
+      const game = await ctx.db.get(me.gameId);
+      if (!game || game.status !== "playing") return "idle";
+      const players = await gamePlayers(ctx, game._id);
+      const bot = players.find((p) => p.seat === game.turn && p.bot);
+      if (!bot) return "idle";
+      const loaded = await loadSnapshot(ctx, game);
+      const s = loaded.snap;
+      const seat = bot.seat;
+      const p = s.players[seat];
+      const tile = s.tiles.find((t) => t.index === p.position);
+      switch (game.phase) {
+        case "roll":
+        case "card_roll":
+          E.roll(s, seat);
+          break;
+        case "jail":
+          if (p.cash >= s.rules.jailFine * 4) E.payJail(s, seat);
+          else E.roll(s, seat);
+          break;
+        case "buy": {
+          const price = tile?.price ?? 0;
+          const house = tile?.type === "city" ? (tile.housePrice ?? 0) : 0;
+          if (p.cash - price - house >= 8000 && house > 0 && !s.rules.requireMonopolyToBuild) E.buy(s, seat, true);
+          else if (p.cash - price >= 5000) E.buy(s, seat);
+          else E.skipBuy(s, seat);
+          break;
+        }
+        case "world_tour": {
+          const own = E.ownedBy(s, seat);
+          E.worldTour(s, seat, own.length ? own[Math.floor(Math.random() * own.length)] : undefined);
+          break;
+        }
+        case "debt": {
+          const own = E.ownedBy(s, seat).sort((a, b) => (s.tiles.find((t) => t.index === a)?.price ?? 0) - (s.tiles.find((t) => t.index === b)?.price ?? 0));
+          const withHouses = own.find((i) => s.props[i].houses > 0 || s.props[i].landmark);
+          if (withHouses !== undefined) E.sellHouse(s, seat, withHouses);
+          else if (own.length) E.sellLand(s, seat, own[0]);
+          else E.giveUp(s, seat);
+          break;
+        }
+        case "end": {
+          // build where standing if cheap enough, then end
+          if (tile && tile.type === "city" && s.props[tile.index]?.ownerSeat === seat && p.cash >= (tile.housePrice ?? 0) + 6000) {
+            try {
+              E.build(s, seat, tile.index);
+            } catch {
+              /* not allowed right now */
+            }
+          }
+          E.endTurn(s, seat);
+          break;
+        }
+      }
+      await saveSnapshot(ctx, loaded);
+      return game.phase;
     }),
 });
 

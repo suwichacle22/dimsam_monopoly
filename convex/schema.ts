@@ -143,6 +143,7 @@ export default defineSchema({
     jailTurns: v.number(),
     skipTurns: v.number(),
     bankrupt: v.boolean(),
+    bot: v.optional(v.boolean()),
     lastSeen: v.number(),
   })
     .index("by_game", ["gameId", "seat"])

@@ -7,6 +7,7 @@ import { Dimsam } from "~/art/Dimsam";
 import { Board, type TileFx } from "~/components/Board";
 import { CoinFlights, type Flight } from "~/components/CoinFlights";
 import { MoneyBurst, type Burst } from "~/components/MoneyBurst";
+import { TestPanel } from "~/components/TestPanel";
 import { ActionPanel } from "~/components/ActionPanel";
 import { PlayerPanel } from "~/components/PlayerPanel";
 import { EventLog } from "~/components/EventLog";
@@ -63,6 +64,7 @@ function Game({ token }: { token: string }) {
     giveUp: useMutation(api.game.giveUp),
     newGame: useMutation(api.game.newGame),
     heartbeat: useMutation(api.game.heartbeat),
+    botStep: useMutation(api.game.botStep),
   };
 
   const [displayPos, setDisplayPos] = useState<number[]>([]);
@@ -71,6 +73,11 @@ function Game({ token }: { token: string }) {
   const [walking, setWalking] = useState(false);
   const [diceShown, setDiceShown] = useState<number[]>([1, 1]);
   const [card, setCard] = useState<GameView["game"]["lastCard"] | null>(null);
+  useEffect(() => {
+    if (!card) return;
+    const id = setTimeout(() => setCard(null), 3500);
+    return () => clearTimeout(id);
+  }, [card]);
   const [sheet, setSheet] = useState<TileView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
@@ -257,6 +264,16 @@ function Game({ token }: { token: string }) {
     };
   }, [actionAt]);
 
+  // solo mode: when it is the bot's turn and nothing is animating, let it act after a short pause
+  const botTurn = !!view && view.game.status === "playing" && !!view.players[view.game.turn]?.bot;
+  const busyNow = rolling || walking || !!burst || !!card;
+  useEffect(() => {
+    if (!botTurn || busyNow) return;
+    const id = setTimeout(() => m.botStep({ token }).catch(() => {}), 1100);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [botTurn, busyNow, view?.game.phase, view?.game.actionAt, token]);
+
   const run = useCallback(async (fn: () => Promise<unknown>, optimisticRoll = false) => {
     setError(null);
     setPendingAction(true);
@@ -340,6 +357,15 @@ function Game({ token }: { token: string }) {
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} />
+        {view.players.some((p) => p.bot) && (
+          <TestPanel
+            view={view}
+            onBurst={setBurst}
+            onFx={pushFx}
+            onCard={(deck, text) => { setCard({ deck, text, seat: view.me, at: Date.now() }); play("card"); }}
+            onRoll={() => { play("roll"); setRolling(true); setTimeout(() => { setDiceShown([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]); setRolling(false); }, 1000); }}
+          />
+        )}
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
         <div className="flex justify-between items-center text-xs text-cocoa/50 px-1">
           <Link to="/settings">ตั้งค่า</Link>

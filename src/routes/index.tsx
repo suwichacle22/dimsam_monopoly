@@ -80,6 +80,7 @@ function Lobby({ password }: { password: string }) {
   const join = useMutation(api.game.join);
   const leave = useMutation(api.game.leave);
   const start = useMutation(api.game.start);
+  const addBot = useMutation(api.game.addBot);
   const [name, setName] = useState(session?.name ?? "");
   const [variant, setVariant] = useState<"blue" | "pink">(session?.variant ?? "blue");
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +156,7 @@ function Lobby({ password }: { password: string }) {
               <div className="w-10 h-10 shrink-0">{p ? <DimsamToken variant={p.variant} /> : <div className="w-10 h-10 rounded-full border-2 border-dashed border-cocoa/30" />}</div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{p ? p.name : `ที่นั่ง ${seat + 1} ว่าง`}</div>
-                <div className="text-xs text-cocoa/60">{p ? (p.online ? "ออนไลน์" : "ออฟไลน์") : "แตะเพื่อนั่ง"}</div>
+                <div className="text-xs text-cocoa/60">{p ? (p.bot ? "🤖 บอท" : p.online ? "ออนไลน์" : "ออฟไลน์") : "แตะเพื่อนั่ง"}</div>
               </div>
               {!p && mySeat === null && (
                 <button className="btn-secondary" disabled={busy || !name.trim()} onClick={() => takeSeat(seat)}>
@@ -180,6 +181,25 @@ function Lobby({ password }: { password: string }) {
 
       {error && <p className="text-sm text-berry">{error}</p>}
 
+      {mySeat !== null && !both && (
+        <button
+          className="btn-secondary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await addBot({ token: session!.token });
+            } catch (e) {
+              setError(errorMessage(e));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          🤖 เล่นคนเดียวกับบอท (โหมดทดสอบ)
+        </button>
+      )}
       {mySeat !== null && (
         <button
           className="btn-primary"

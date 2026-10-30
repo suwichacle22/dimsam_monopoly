@@ -35,7 +35,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
     return (
       <Panel tone="muted">
         <p className="text-cocoa/70">
-          รอ <b className="text-cocoa">{current?.name}</b>{" "}
+          {current?.bot ? "🤖 " : ""}รอ <b className="text-cocoa">{current?.name}</b>{" "}
           {g.phase === "roll" && "ทอยลูกเต๋า"}
           {g.phase === "jail" && "ทอยหาเบิ้ลในอ่างอาบน้ำ"}
           {g.phase === "buy" && "ตัดสินใจซื้อที่ดิน"}
