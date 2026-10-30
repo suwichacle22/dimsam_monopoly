@@ -228,7 +228,7 @@ export const DEFAULT_RULES: Rules = {
   cardMovesCollectStart: true,
   maxDebt: 20000,
   gaugeEnabled: true,
-  gaugeAccuracy: 0.6,
+  gaugeAccuracy: 0.1,
   autoEndTurn: true,
 };
 
