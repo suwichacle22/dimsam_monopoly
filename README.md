@@ -19,7 +19,7 @@ bun scripts/e2e.ts 4                          # two-player headless playthrough 
 ```
 
 ## Deploy (once)
-Free setup: **Convex** (backend, free tier) + **Cloudflare Pages** (frontend, free, no sleeping).
+Free setup: **Convex** (backend, free tier) + **Cloudflare Workers static assets** (frontend, free, no sleeping).
 
 1. **Convex (backend)** — the CLI on this PC is not logged in, so use a deploy key instead of `convex login`
    (it also leaves the local `.env.local` untouched):
@@ -30,23 +30,24 @@ Free setup: **Convex** (backend, free tier) + **Cloudflare Pages** (frontend, fr
      ```
    - **Settings → Environment Variables** → add `ROOM_PASSWORD` = รหัสห้องของเรา. If it is not set the password is `dimsam`.
    The board, cards and rules are seeded automatically the first time someone opens the room.
-2. **Frontend on Cloudflare Pages** — push this repo to GitHub, then in the Cloudflare dashboard:
-   **Workers & Pages → Create → Pages → Connect to Git** → pick `dimsam_monopoly` and set
+2. **Frontend on Cloudflare Workers (static assets)** — push this repo to GitHub, then in the Cloudflare dashboard:
+   **Workers & Pages → Create → Import a repository** → pick `dimsam_monopoly` and set
    | Setting | Value |
    |---|---|
-   | Build command | `bun install && bun run build` |
-   | Build output directory | `dist/client` |
-   | Environment variable | `VITE_CONVEX_URL` = `https://third-wren-155.ap-southeast-2.convex.cloud` |
+   | Build command | `bun run build` |
+   | Deploy command | `npx wrangler deploy` |
+   | Build variable | `VITE_CONVEX_URL` = `https://third-wren-155.ap-southeast-2.convex.cloud` |
 
-   Every `git push` to `main` redeploys. The `_redirects` file in `dist/client` makes `/game` and `/settings` load directly.
+   `wrangler.jsonc` in the repo tells wrangler to upload `dist/client` as static assets with SPA fallback,
+   so `/game` and `/settings` load directly. Every `git push` to `main` redeploys.
 
    Without GitHub (upload from this PC instead):
    ```bash
    VITE_CONVEX_URL=https://third-wren-155.ap-southeast-2.convex.cloud bun run build
    bunx wrangler login
-   bunx wrangler pages deploy dist/client --project-name dimsam-monopoly
+   bunx wrangler deploy
    ```
-   Vercel also works: output directory `dist/client` (`vercel.json` already rewrites to the SPA shell).
+   Cloudflare Pages or Vercel also work: output directory `dist/client` (`_redirects` / `vercel.json` already rewrite to `index.html`).
 
 ## Layout
 - `convex/defaults.ts` — board tiles, cards, rules (seed data, copied into the DB on first run)

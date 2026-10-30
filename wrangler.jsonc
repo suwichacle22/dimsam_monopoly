@@ -1,0 +1,11 @@
+// Cloudflare Workers (static assets only). The game is a pure SPA; the backend is Convex.
+// Build: `bun run build` (needs VITE_CONVEX_URL), deploy: `npx wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dimsam-monopoly",
+  "compatibility_date": "2026-10-23",
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application"
+  }
+}

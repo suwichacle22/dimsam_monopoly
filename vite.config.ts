@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    tanstackStart({ spa: { enabled: true } }),
+    tanstackStart({ spa: { enabled: true, prerender: { outputPath: "/index" } } }),
     react(),
   ],
 });
