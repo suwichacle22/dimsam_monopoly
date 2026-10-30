@@ -36,13 +36,13 @@ Free setup: **Convex** (backend, free tier) + **Cloudflare Pages** (frontend, fr
    |---|---|
    | Build command | `bun install && bun run build` |
    | Build output directory | `dist/client` |
-   | Environment variable | `VITE_CONVEX_URL` = `https://fine-mammoth-593.ap-southeast-2.convex.cloud` |
+   | Environment variable | `VITE_CONVEX_URL` = `https://third-wren-155.ap-southeast-2.convex.cloud` |
 
    Every `git push` to `main` redeploys. The `_redirects` file in `dist/client` makes `/game` and `/settings` load directly.
 
    Without GitHub (upload from this PC instead):
    ```bash
-   VITE_CONVEX_URL=https://fine-mammoth-593.ap-southeast-2.convex.cloud bun run build
+   VITE_CONVEX_URL=https://third-wren-155.ap-southeast-2.convex.cloud bun run build
    bunx wrangler login
    bunx wrangler pages deploy dist/client --project-name dimsam-monopoly
    ```
