@@ -19,20 +19,34 @@ bun scripts/e2e.ts 4                          # two-player headless playthrough 
 ```
 
 ## Deploy (once)
-1. **Convex (backend)** — log in on this PC and push the functions to the cloud deployment:
-   ```bash
-   bunx convex login
-   bunx convex deploy            # pushes convex/ to the production deployment
-   bunx convex env set ROOM_PASSWORD <รหัสห้องของเรา> --prod
-   ```
-   If `ROOM_PASSWORD` is not set the room password is `dimsam`.
-2. **Frontend** — build with the cloud URL and host the `dist/client` folder on any static host
-   (Cloudflare Pages or Vercel Hobby are free):
+Free setup: **Convex** (backend, free tier) + **Cloudflare Pages** (frontend, free, no sleeping).
+
+1. **Convex (backend)** — the CLI on this PC is not logged in, so use a deploy key instead of `convex login`
+   (it also leaves the local `.env.local` untouched):
+   - Convex dashboard → project `dimsam_monopoly` → **Settings → Deploy Keys → Generate production deploy key**.
+   - In a terminal (never paste the key anywhere else):
+     ```bash
+     CONVEX_DEPLOY_KEY='prod:...' bunx convex deploy
+     ```
+   - **Settings → Environment Variables** → add `ROOM_PASSWORD` = รหัสห้องของเรา. If it is not set the password is `dimsam`.
+   The board, cards and rules are seeded automatically the first time someone opens the room.
+2. **Frontend on Cloudflare Pages** — push this repo to GitHub, then in the Cloudflare dashboard:
+   **Workers & Pages → Create → Pages → Connect to Git** → pick `dimsam_monopoly` and set
+   | Setting | Value |
+   |---|---|
+   | Build command | `bun install && bun run build` |
+   | Build output directory | `dist/client` |
+   | Environment variable | `VITE_CONVEX_URL` = `https://fine-mammoth-593.ap-southeast-2.convex.cloud` |
+
+   Every `git push` to `main` redeploys. The `_redirects` file in `dist/client` makes `/game` and `/settings` load directly.
+
+   Without GitHub (upload from this PC instead):
    ```bash
    VITE_CONVEX_URL=https://fine-mammoth-593.ap-southeast-2.convex.cloud bun run build
+   bunx wrangler login
+   bunx wrangler pages deploy dist/client --project-name dimsam-monopoly
    ```
-   - Cloudflare Pages: output directory `dist/client` (the `_redirects` file is already there).
-   - Vercel: output directory `dist/client` (`vercel.json` already rewrites to the SPA shell).
+   Vercel also works: output directory `dist/client` (`vercel.json` already rewrites to the SPA shell).
 
 ## Layout
 - `convex/defaults.ts` — board tiles, cards, rules (seed data, copied into the DB on first run)
