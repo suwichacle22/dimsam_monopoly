@@ -532,8 +532,7 @@ export function roll(s: Snapshot, seat: number, target?: number) {
     const sum = a + b;
     if (e.kind === "roll_even_odd") {
       if (sum % 2 === 0) {
-        p.skipTurns += e.turns ?? 1;
-        log(s, "skip", `แต้มคู่ ${p.name} กลับบ้านพัก 1 ตา`, seat);
+        sendToJail(s, seat, `การ์ด: ทอยได้แต้มคู่ ${sum}`); // "กลับบ้าน" = the tub
       } else {
         moveTo(s, seat, 0, true);
         land(s, seat);

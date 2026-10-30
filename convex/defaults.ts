@@ -118,7 +118,7 @@ export type CardEffect = {
     | "move_to" // tileIndex, passStart (collect bonus when passing), rentMultiplier
     | "move_by" // steps (negative = backwards)
     | "roll_again" // take another roll right away
-    | "roll_even_odd" // roll: even = rest 1 turn, odd = go to start (+bonus)
+    | "roll_even_odd" // roll: even = sent to jail (กลับบ้าน), odd = go to start (+bonus)
     | "roll_threshold" // roll: sum >= threshold → +amount, else −amount
     | "nearest" // target: special_item | station | own ; move there (pass start bonus)
     | "go_to_jail";
@@ -161,7 +161,7 @@ export const DEFAULT_CARDS: CardSeed[] = [
   { deck: "special", text: "ตัวเหม็นแล้ว! โดนจับกลับบ้านไปอาบน้ำ ไปอ่างอาบน้ำทันที", effect: { kind: "go_to_jail" } },
   { deck: "special", text: "โดนแมวกวักเรียก ถอยหลังกลับไป 3 ช่อง", effect: { kind: "move_by", steps: -3 } },
   { deck: "special", text: "ทอยลูกเต๋าเพื่อเดินทางอีก 1 ครั้ง", effect: { kind: "roll_again" } },
-  { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวมเป็นเลขคู่ หยุดเดิน 1 ตา (กลับบ้าน) ถ้าเลขคี่ เดินหน้าไปบ้านติ่มซำ รับ 2,000 บาท", effect: { kind: "roll_even_odd" } },
+  { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวมเป็นเลขคู่ โดนจับกลับบ้านไปอาบน้ำ ถ้าเลขคี่ เดินหน้าไปบ้านติ่มซำ รับ 2,000 บาท", effect: { kind: "roll_even_odd" } },
   { deck: "special", text: "วิ่งไปช่องของเล่นที่ใกล้ที่สุด ถ้าไม่มีเจ้าของซื้อได้ ผ่านบ้านรับ 2,000 บาท", effect: { kind: "nearest", target: "special_item", passStart: true } },
   { deck: "special", text: "วิ่งไปร้านที่ใกล้ที่สุด ถ้าไม่มีเจ้าของซื้อได้ ผ่านบ้านรับ 2,000 บาท", effect: { kind: "nearest", target: "station", passStart: true } },
   { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวม 6 ขึ้นไป รับเงิน 2,000 บาท ถ้าน้อยกว่า 6 เสียเงิน 2,000 บาท", effect: { kind: "roll_threshold", threshold: 6, amount: 2000 } },

@@ -355,6 +355,18 @@ describe("cards", () => {
     expect(s.game.phase).toBe("end");
   });
 
+  test("roll_even_odd: even sends you to the tub", () => {
+    const s = withCard({ kind: "roll_even_odd" });
+    E.roll(s, 0);
+    const dice = [2, 2];
+    s.roll = () => dice.shift()!;
+    E.roll(s, 0);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.players[0].position).toBe(10);
+    expect(s.players[0].skipTurns).toBe(0);
+    expect(s.game.lastRollDouble).toBe(false);
+  });
+
   test("roll_even_odd: odd walks to start", () => {
     const s = withCard({ kind: "roll_even_odd" });
     E.roll(s, 0);
