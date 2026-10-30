@@ -306,6 +306,7 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
       return;
     }
     case "tax":
+      s.events.push({ seat, kind: "tax", text: JSON.stringify({ amount: tile.amount ?? 0, tile: tile.index }) });
       charge(s, seat, tile.amount ?? 0, tile.name);
       return;
     case "treasure":

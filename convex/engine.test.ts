@@ -245,6 +245,16 @@ describe("jail (bath tub)", () => {
   });
 });
 
+describe("tax tiles", () => {
+  test("landing on a tax tile charges and emits a tax event for the client", () => {
+    const s = makeSnap([2, 2]); // → tile 4 ค่าอาบน้ำตัดขน
+    E.roll(s, 0);
+    expect(s.players[0].cash).toBe(30000 - 1000);
+    const ev = s.events.find((e) => e.kind === "tax");
+    expect(ev && JSON.parse(ev.text)).toEqual({ amount: 1000, tile: 4 });
+  });
+});
+
 describe("passing start", () => {
   test("emits a pass_start event carrying the bonus", () => {
     const s = makeSnap([1, 2]);

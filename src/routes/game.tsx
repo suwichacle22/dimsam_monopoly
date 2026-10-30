@@ -241,6 +241,25 @@ function Game({ token }: { token: string }) {
           if (cancelled) return;
         }
       }
+      // tax tile burst (ค่าหาหมอ, ค่าอาบน้ำตัดขน): the money just vanishes, so show it clearly
+      const taxEv = fresh.find((e) => e.kind === "tax");
+      if (taxEv && taxEv.seat !== undefined) {
+        const t = JSON.parse(taxEv.text) as { amount: number; tile: number };
+        const payer = v.players[taxEv.seat];
+        const tile = v.tiles.find((x) => x.index === t.tile);
+        setBurst({
+          id: actionAt + 2,
+          amount: -t.amount,
+          tone: "lose",
+          label: `${payer.name} จ่าย${tile?.name ?? "ค่าใช้จ่าย"}`,
+          kicker: tile?.name ?? "ค่าใช้จ่าย",
+          detail: tile?.blurb,
+          variant: payer.variant,
+        });
+        play("penalty");
+        await sleep(2300);
+        if (cancelled) return;
+      }
       // rent burst: shown from this phone's point of view (payer loses, owner gains, or it goes on the tab)
       const rentEv = fresh.find((e) => e.kind === "rent");
       if (rentEv && rentEv.seat !== undefined) {
@@ -285,7 +304,7 @@ function Game({ token }: { token: string }) {
       else if (fresh.some((e) => e.kind === "build")) play("build");
       else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
       else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)") && !e.text.includes("(ผ่านบ้านติ่มซำ)"))) play("cash");
-      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
+      else if (!rentEv && !taxEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
     })();
     return () => {
       cancelled = true;
