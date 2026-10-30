@@ -61,7 +61,7 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
         <Card band="#9ed8f5" title="โดนจับอาบน้ำอยู่ 🛁">
           <Small>ทอยให้ได้เบิ้ลเพื่อหนี หรือจ่ายค่าไถ่ {baht(r.jailFine)} · รอ {r.jailMaxTurns} ตาแล้วออกฟรี</Small>
           <div className="flex gap-[6px]">
-            <Btn tone="primary" disabled={disabled} onClick={actions.roll} label="🎲 ทอยหาเบิ้ล" />
+            <Btn tone="primary" disabled={disabled} onClick={() => actions.roll()} label="🎲 ทอยหาเบิ้ล" />
             <Btn tone="ghost" disabled={disabled || me.cash < r.jailFine} onClick={actions.payJail} label={`จ่าย ${baht(r.jailFine)}`} />
           </div>
         </Card>
@@ -70,7 +70,7 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
       return (
         <Card band="#8b6fd1" title="การ์ดให้ทอยลูกเต๋า">
           <Small>{(g.pending as { text: string }).text}</Small>
-          <Btn tone="primary" disabled={disabled} onClick={actions.roll} label="🎲 ทอยลูกเต๋า" />
+          <Btn tone="primary" disabled={disabled} onClick={() => actions.roll()} label="🎲 ทอยลูกเต๋า" />
         </Card>
       );
     case "world_tour": {

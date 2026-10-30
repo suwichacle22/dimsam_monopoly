@@ -74,6 +74,8 @@ export type Snapshot = {
   events: { seat?: number; kind: string; text: string }[];
   now: number;
   roll: () => number; // returns 1..6
+  /** uniform 0..1, used for the aim gauge; defaults to Math.random */
+  rand?: () => number;
 };
 
 export class GameError extends Error {}
@@ -477,15 +479,31 @@ export function startGame(s: Snapshot) {
   startTurnFor(s, 0);
 }
 
-export function roll(s: Snapshot, seat: number) {
+/** Two dice; with an aimed `target` (2–12) the result hits the target with rules.gaugeAccuracy. */
+function rollDice(s: Snapshot, target?: number): [number, number] {
+  const r = s.rules;
+  const rand = s.rand ?? Math.random;
+  if (target !== undefined && r.gaugeEnabled && Number.isInteger(target) && target >= 2 && target <= 12 && rand() < r.gaugeAccuracy) {
+    const pairs: [number, number][] = [];
+    for (let a = 1; a <= 6; a++) {
+      const b = target - a;
+      if (b >= 1 && b <= 6) pairs.push([a, b]);
+    }
+    return pairs[Math.min(pairs.length - 1, Math.floor(rand() * pairs.length))];
+  }
+  return [s.roll(), s.roll()];
+}
+
+export function roll(s: Snapshot, seat: number, target?: number) {
   requireTurn(s, seat, "roll", "jail", "card_roll");
   const g = s.game;
   const p = s.players[seat];
-  const a = s.roll();
-  const b = s.roll();
+  const aimed = target !== undefined && s.rules.gaugeEnabled && g.phase === "roll" ? target : undefined;
+  const [a, b] = rollDice(s, aimed);
   g.dice = [a, b];
   const isDouble = a === b;
-  log(s, "roll", `${p.name} ทอยได้ ${a} + ${b} = ${a + b}${isDouble ? " เบิ้ล!" : ""}`, seat);
+  const aimText = aimed === undefined ? "" : a + b === aimed ? ` 🎯 ตรงเป้า ${aimed}!` : ` (เล็ง ${aimed})`;
+  log(s, "roll", `${p.name} ทอยได้ ${a} + ${b} = ${a + b}${aimText}${isDouble ? " เบิ้ล!" : ""}`, seat);
 
   if (g.phase === "card_roll" && g.pending?.kind === "card_roll") {
     const e = g.pending.effect;

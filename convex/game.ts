@@ -354,8 +354,8 @@ async function act(ctx: MutationCtx, token: string, fn: (s: E.Snapshot, seat: nu
 }
 
 export const roll = mutation({
-  args: { token: v.string() },
-  handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.roll(s, seat)),
+  args: { token: v.string(), target: v.optional(v.number()) },
+  handler: (ctx, { token, target }) => act(ctx, token, (s, seat) => E.roll(s, seat, target)),
 });
 export const buy = mutation({
   args: { token: v.string(), withHouse: v.optional(v.boolean()) },

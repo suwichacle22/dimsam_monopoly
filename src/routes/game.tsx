@@ -301,8 +301,15 @@ function Game({ token }: { token: string }) {
   const myTurn = !!view && view.game.turn === view.me && view.game.status === "playing";
   const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll"].includes(view!.game.phase);
 
-  // Space = roll (only when it's actually your turn to roll); Escape closes sheets
-  useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow });
+  // Space: in the normal roll phase hold-to-aim drives the gauge; elsewhere a plain roll. Escape closes sheets.
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const gaugePhase = canRollNow && view!.game.phase === "roll" && view!.rules.gaugeEnabled;
+  useHotkey("Space", () => setSpaceHeld(true), { enabled: gaugePhase && !spaceHeld, eventType: "keydown", requireReset: true, conflictBehavior: "allow" });
+  useHotkey("Space", () => setSpaceHeld(false), { enabled: spaceHeld, eventType: "keyup", conflictBehavior: "allow" });
+  useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow && !gaugePhase, conflictBehavior: "allow" });
+  useEffect(() => {
+    if (!gaugePhase) setSpaceHeld(false);
+  }, [gaugePhase]);
   useHotkey("Escape", () => { setSheet(null); setCard(null); }, { enabled: !!sheet || !!card });
 
   if (!view) return <div className="min-h-dvh flex items-center justify-center text-cocoa/60">กำลังโหลดกระดาน…</div>;
@@ -326,7 +333,7 @@ function Game({ token }: { token: string }) {
                   : "idle";
 
   const actions = {
-    roll: () => run(() => m.roll({ token }), true),
+    roll: (target?: number) => run(() => m.roll({ token, target }), true),
     buy: (withHouse = false) => run(() => m.buy({ token, withHouse })),
     payRent: (mode: "cash" | "tab") => run(() => m.payRent({ token, mode })),
     payDebt: (amount?: number) => run(() => m.payDebt({ token, amount })),
@@ -364,7 +371,7 @@ function Game({ token }: { token: string }) {
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
-        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />
+        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
         {view.players.some((p) => p.bot) && (

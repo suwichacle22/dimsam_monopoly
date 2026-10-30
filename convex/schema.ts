@@ -80,6 +80,8 @@ export const rulesFields = {
   landSellBackRatio: v.optional(v.number()),
   cardMovesCollectStart: v.boolean(),
   maxDebt: v.optional(v.number()),
+  gaugeEnabled: v.optional(v.boolean()),
+  gaugeAccuracy: v.optional(v.number()),
 };
 
 export const phase = v.union(

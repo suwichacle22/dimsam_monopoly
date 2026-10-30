@@ -589,3 +589,33 @@ describe("tab between players (ติดไว้ก่อน)", () => {
     expect(s.players[0].debt).toBe(0);
   });
 });
+
+describe("aim gauge", () => {
+  test("an aimed roll hits the target when the accuracy check passes", () => {
+    const s = makeSnap([], { rand: () => 0 });
+    E.roll(s, 0, 7);
+    expect(s.game.dice[0] + s.game.dice[1]).toBe(7);
+    expect(s.events.find((e) => e.kind === "roll")?.text ?? "").toContain("ตรงเป้า");
+  });
+
+  test("a missed aim falls back to the normal dice", () => {
+    const s = makeSnap([2, 3], { rand: () => 0.99 });
+    E.roll(s, 0, 12);
+    expect(s.game.dice).toEqual([2, 3]);
+  });
+
+  test("the gauge can be switched off", () => {
+    const s = makeSnap([2, 3], { rand: () => 0 });
+    s.rules.gaugeEnabled = false;
+    E.roll(s, 0, 12);
+    expect(s.game.dice).toEqual([2, 3]);
+  });
+
+  test("aiming is ignored for jail and card rolls", () => {
+    const s = makeSnap([1, 2], { rand: () => 0 });
+    s.players[0].inJail = true;
+    s.game.phase = "jail";
+    E.roll(s, 0, 8);
+    expect(s.game.dice).toEqual([1, 2]);
+  });
+});

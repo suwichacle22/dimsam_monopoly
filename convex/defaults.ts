@@ -200,6 +200,10 @@ export type Rules = {
   cardMovesCollectStart: boolean;
   /** max rent a player may owe the other player ("ติดไว้ก่อน"); 0 = no tab, rent is always cash */
   maxDebt: number;
+  /** hold-to-aim dice gauge */
+  gaugeEnabled: boolean;
+  /** chance (0–1) that an aimed roll lands exactly on the aimed total */
+  gaugeAccuracy: number;
 };
 
 export const DEFAULT_RULES: Rules = {
@@ -221,6 +225,8 @@ export const DEFAULT_RULES: Rules = {
   landSellBackRatio: 0.5,
   cardMovesCollectStart: true,
   maxDebt: 20000,
+  gaugeEnabled: true,
+  gaugeAccuracy: 0.6,
 };
 
 export const RULE_LABELS: Record<keyof Rules, string> = {
@@ -242,4 +248,6 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   landSellBackRatio: "ขายที่ดินคืนได้กี่เท่าของราคาซื้อ (0.5 = 50%)",
   cardMovesCollectStart: "เดินด้วยการ์ดแล้วผ่านบ้านได้ค่าขนม",
   maxDebt: "ติดค่าเช่าอีกฝ่ายได้สูงสุด (0 = ปิด ต้องจ่ายสดเสมอ)",
+  gaugeEnabled: "เกจเล็งลูกเต๋า (กดปุ่มค้างเพื่อเล็งแต้ม)",
+  gaugeAccuracy: "โอกาสที่เล็งแล้วได้แต้มตรงเป้า (0 = สุ่มล้วน, 1 = ตรงทุกครั้ง)",
 };

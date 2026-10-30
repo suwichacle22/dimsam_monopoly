@@ -1,9 +1,10 @@
 import type { GameView } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
 import { buildBlocker, buildCost, wealth } from "~/lib/game";
+import { RollGauge } from "./RollGauge";
 
 export type Actions = {
-  roll: () => void;
+  roll: (target?: number) => void;
   buy: (withHouse?: boolean) => void;
   payRent: (mode: "cash" | "tab") => void;
   payDebt: (amount?: number) => void;
@@ -16,7 +17,7 @@ export type Actions = {
   openTile: (tileIndex: number) => void;
 };
 
-export function ActionPanel({ view, busy, pendingAction, actions }: { view: GameView; busy: boolean; pendingAction: boolean; actions: Actions }) {
+export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld }: { view: GameView; busy: boolean; pendingAction: boolean; actions: Actions; spaceHeld?: boolean }) {
   const g = view.game;
   const me = view.players.find((p) => p.seat === view.me)!;
   const current = view.players[g.turn];
@@ -72,10 +73,16 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
       return (
         <Panel>
           <p className="font-semibold text-cocoa">ตาของคุณ</p>
-          <button className="btn-primary w-full" disabled={disabled} onClick={actions.roll}>
-            🎲 ทอยลูกเต๋า <kbd className="hidden sm:inline-block ml-2 text-xs font-normal bg-white/25 rounded px-1.5 py-0.5 align-middle">Space</kbd>
-          </button>
-          <Hint>แตะที่ดินของตัวเองบนกระดานเพื่อดูค่าเช่าหรือขาย</Hint>
+          {view.rules.gaugeEnabled ? (
+            <>
+              <RollGauge disabled={disabled} externalHold={spaceHeld} onRoll={actions.roll} />
+              <Hint>กดค้างให้เข็มวิ่ง ปล่อยตรงแต้มที่อยากได้ (โอกาสตรงเป้า {Math.round(view.rules.gaugeAccuracy * 100)}%) · แตะสั้นๆ = สุ่มล้วน</Hint>
+            </>
+          ) : (
+            <button className="btn-primary w-full" disabled={disabled} onClick={() => actions.roll()}>
+              🎲 ทอยลูกเต๋า <kbd className="hidden sm:inline-block ml-2 text-xs font-normal bg-white/25 rounded px-1.5 py-0.5 align-middle">Space</kbd>
+            </button>
+          )}
         </Panel>
       );
     case "jail":
@@ -84,7 +91,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
           <p className="font-semibold text-cocoa">อยู่ในอ่างอาบน้ำ 🛁</p>
           <p className="text-sm text-cocoa/70">ทอยให้ได้เบิ้ลเพื่อหนีออกมา หรือจ่ายค่าไถ่ {baht(view.rules.jailFine)} (รอ {view.rules.jailMaxTurns} ตาแล้วออกฟรี)</p>
           <div className="flex gap-2">
-            <button className="btn-primary flex-1" disabled={disabled} onClick={actions.roll}>
+            <button className="btn-primary flex-1" disabled={disabled} onClick={() => actions.roll()}>
               🎲 ทอยหาเบิ้ล
             </button>
             <button className="btn-secondary flex-1" disabled={disabled || me.cash < view.rules.jailFine} onClick={actions.payJail}>
@@ -127,7 +134,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
         <Panel>
           <p className="font-semibold text-cocoa">การ์ดบอกให้ทอยลูกเต๋า</p>
           <p className="text-sm text-cocoa/70">{(g.pending as { text: string }).text}</p>
-          <button className="btn-primary w-full" disabled={disabled} onClick={actions.roll}>
+          <button className="btn-primary w-full" disabled={disabled} onClick={() => actions.roll()}>
             🎲 ทอยลูกเต๋า
           </button>
         </Panel>

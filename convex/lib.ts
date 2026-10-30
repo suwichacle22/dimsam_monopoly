@@ -98,6 +98,7 @@ export async function loadSnapshot(ctx: Ctx, game: Doc<"games">): Promise<Loaded
     events: [],
     now: Date.now(),
     roll: () => 1 + Math.floor(Math.random() * 6),
+    rand: Math.random,
   };
   return { snap, game, players, props };
 }
