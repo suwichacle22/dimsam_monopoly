@@ -317,6 +317,15 @@ describe("cards", () => {
     expect(s.players[1].cash).toBe(29500);
   });
 
+  test("a go-to-jail card sends you straight to the tub", () => {
+    const s = withCard({ kind: "go_to_jail" });
+    E.roll(s, 0); // 1+1 is a double, but jail cancels the bonus roll
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.players[0].position).toBe(10);
+    expect(s.game.phase).toBe("end");
+    expect(s.game.lastRollDouble).toBe(false);
+  });
+
   test("roll_threshold asks for a roll and pays by result", () => {
     const s = withCard({ kind: "roll_threshold", threshold: 6, amount: 2000 });
     E.roll(s, 0);

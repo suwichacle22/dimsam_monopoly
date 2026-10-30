@@ -158,7 +158,7 @@ export const DEFAULT_CARDS: CardSeed[] = [
   { deck: "special", text: "วิ่งตามแมวไปถึงโลกอนาคต ถ้าไม่มีเจ้าของซื้อได้ ถ้ามีเจ้าของจ่ายค่าเช่า 2 เท่า ผ่านบ้านรับ 2,000 บาท", effect: { kind: "move_to", tileIndex: 39, passStart: true, rentMultiplier: 2 } },
   { deck: "special", text: "ชามข้าวแตก ซื้อใหม่ เสียเงิน 3,500 บาท", effect: { kind: "money", amount: -3500 } },
   { deck: "special", text: "เตียงนุ่มฟูขาด ส่งซ่อม เสียเงิน 1,500 บาท", effect: { kind: "money", amount: -1500 } },
-  { deck: "special", text: "เดินทางกลับบ้าน พักกินขนม 1 ตา", effect: { kind: "skip", turns: 1 } },
+  { deck: "special", text: "ตัวเหม็นแล้ว! โดนจับกลับบ้านไปอาบน้ำ ไปอ่างอาบน้ำทันที", effect: { kind: "go_to_jail" } },
   { deck: "special", text: "โดนแมวกวักเรียก ถอยหลังกลับไป 3 ช่อง", effect: { kind: "move_by", steps: -3 } },
   { deck: "special", text: "ทอยลูกเต๋าเพื่อเดินทางอีก 1 ครั้ง", effect: { kind: "roll_again" } },
   { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวมเป็นเลขคู่ หยุดเดิน 1 ตา (กลับบ้าน) ถ้าเลขคี่ เดินหน้าไปบ้านติ่มซำ รับ 2,000 บาท", effect: { kind: "roll_even_odd" } },
