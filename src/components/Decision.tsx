@@ -109,6 +109,9 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
       const tp = tabPreview(view, view.me, pend.amount);
       const canCash = me.cash >= pend.amount;
       const tabUseful = tp.offset > 0 || tp.tabbed > 0;
+      const sellable = wealth(view, view.me).sellable;
+      const canCover = me.cash + sellable >= pend.amount; // short on cash, but houses/land could cover it
+      const stuck = !canCash && !tabUseful;
       const parts: string[] = [];
       if (tp.offset > 0) parts.push(`หักหนี้ที่ ${owner.name} ติดคุณ ${baht(tp.offset)}`);
       if (tp.tabbed > 0) parts.push(`ติดเพิ่ม ${baht(tp.tabbed)}`);
@@ -131,12 +134,26 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
               {owner.debt > 0 && <>{owner.name} ติดคุณอยู่ {baht(owner.debt)}</>}
             </Small>
           )}
+          {stuck && (
+            <Small>
+              {canCover
+                ? `เงินสดไม่พอ ${baht(pend.amount - me.cash)} · แตะที่ดินของคุณบนกระดานเพื่อขายบ้าน/ที่ดินก่อน (ขายได้ ${baht(sellable)}) หรือจ่ายเลยแล้วค่อยขายชดเชย`
+                : `เงินสดและทรัพย์สินรวมกันไม่พอจ่าย ${baht(pend.amount)} · ถ้าจ่าย เกมจะจบและ ${owner.name} ชนะ`}
+            </Small>
+          )}
           <div className="flex flex-col gap-2 pt-1">
-            <Btn tone="primary" disabled={disabled || !canCash} onClick={() => actions.payRent("cash")} label="จ่ายเงินสด" amount={baht(pend.amount)} />
+            <Btn
+              tone="primary"
+              disabled={disabled || (!canCash && !canCover)}
+              onClick={() => actions.payRent("cash")}
+              label={canCash ? "จ่ายเงินสด" : "จ่ายสด แล้วขายทรัพย์สินชดเชย"}
+              amount={baht(pend.amount)}
+            />
             <Btn tone="tab" disabled={disabled || !tabUseful} onClick={() => actions.payRent("tab")} label="ติดไว้ก่อน" amount={tp.tabbed > 0 ? `ติด ${baht(tp.tabbed)}` : undefined} />
           </div>
+          {!canCash && <Btn tone="danger" disabled={disabled} onClick={actions.giveUp} label="ยอมแพ้" />}
           {tabUseful && <p className="text-xs text-cocoa/60 text-center">{parts.join(" · ")}</p>}
-          {!tabUseful && me.debt >= r.maxDebt && <p className="text-xs text-berry text-center">ติดครบ {baht(r.maxDebt)} แล้ว ต้องจ่ายสด</p>}
+          {!tabUseful && me.debt >= r.maxDebt && <p className="text-xs text-berry text-center">ติดครบ {baht(r.maxDebt)} แล้ว ติดเพิ่มไม่ได้</p>}
         </Card>
       );
     }

@@ -613,8 +613,8 @@ export function payRent(s: Snapshot, seat: number, mode: "cash" | "tab") {
   const g = s.game;
   if (g.pending?.kind !== "rent") throw new GameError("ไม่มีค่าเช่าค้างจ่าย");
   const { tileIndex, amount, toSeat } = g.pending;
-  const p = s.players[seat];
-  if (mode === "cash" && p.cash < amount) throw new GameError("เงินสดไม่พอ เลือกติดไว้ก่อนได้");
+  // Paying cash while short is allowed: charge() drops the player into the "broke" phase
+  // (sell houses/land to cover it) or bankrupts them when nothing can cover it.
   g.pending = undefined;
   g.phase = "end";
   settleRent(s, seat, tileIndex, amount, toSeat, mode);
@@ -731,7 +731,7 @@ function afterSale(s: Snapshot, seat: number) {
 }
 
 export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour", "rent");
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];
@@ -754,7 +754,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
 }
 
 export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour", "rent");
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];

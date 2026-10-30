@@ -590,12 +590,32 @@ describe("tab between players (ติดไว้ก่อน)", () => {
     expect(s.game.phase).toBe("end");
   });
 
-  test("cash is refused when short, tab still works", () => {
+  test("tab still works when short on cash", () => {
     const s = landOnRent(100);
-    expect(() => E.payRent(s, 0, "cash")).toThrow(/เงินสดไม่พอ/);
     E.payRent(s, 0, "tab");
     expect(s.players[0].debt).toBe(4500);
     expect(s.players[0].cash).toBe(100);
+  });
+
+  test("paying cash while short with nothing to sell ends the game", () => {
+    const s = landOnRent(100);
+    E.payRent(s, 0, "cash");
+    expect(s.players[0].bankrupt).toBe(true);
+    expect(s.game.status).toBe("finished");
+    expect(s.game.winner).toBe(1);
+  });
+
+  test("paying cash while short but with assets opens the broke phase, and selling can be done first", () => {
+    const s = landOnRent(100);
+    s.props[37] = { ownerSeat: 0, houses: 4, landmark: false }; // the pricey deep-blue street, fully built
+    s.props[39] = { ownerSeat: 0, houses: 4, landmark: false };
+    expect(E.liquidationValue(s, 0)).toBeGreaterThan(4500);
+    E.sellHouse(s, 0, 37); // selling is allowed while the rent is pending
+    expect(s.props[37].houses).toBe(3);
+    E.payRent(s, 0, "cash");
+    expect(s.players[0].bankrupt).toBe(false);
+    expect(s.game.phase).toBe("broke");
+    expect(s.players[0].cash).toBeLessThan(0);
   });
 
   test("the tab is capped; the rest must come from cash, or you go broke", () => {

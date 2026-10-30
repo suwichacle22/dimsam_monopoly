@@ -47,7 +47,7 @@ export function canSellNow(view: GameView, seat: number, tile: TileView): boolea
   const prop = propAt(view, tile.index);
   if (!prop || prop.ownerSeat !== seat) return false;
   if (view.game.turn !== seat) return false;
-  return ["roll", "end", "jail", "broke", "world_tour"].includes(view.game.phase);
+  return ["roll", "end", "jail", "broke", "world_tour", "rent"].includes(view.game.phase);
 }
 
 export function rentPreview(view: GameView, tile: TileView, diceSum = 7): number {
