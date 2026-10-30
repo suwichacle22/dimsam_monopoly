@@ -36,6 +36,7 @@ const publicPlayer = (p: Doc<"players">) => ({
   position: p.position,
   inJail: p.inJail,
   jailTurns: p.jailTurns,
+  jailLimit: p.jailLimit ?? 0,
   skipTurns: p.skipTurns,
   bankrupt: p.bankrupt,
   debt: p.debt ?? 0,
@@ -232,8 +233,8 @@ export const resume = query({
     const p = await ctx.db.query("players").withIndex("by_token", (q) => q.eq("token", token)).first();
     if (!p) return null;
     const game = await ctx.db.get(p.gameId);
-    if (!game || game.status === "finished") return null;
-    return { seat: p.seat, name: p.name, status: game.status };
+    if (!game) return null;
+    return { seat: p.seat, name: p.name, status: game.status }; // "finished" stays visible so both phones see the result
   },
 });
 

@@ -91,7 +91,7 @@ function Lobby({ password }: { password: string }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (resumed?.status === "playing") navigate({ to: "/game" });
+    if (resumed?.status === "playing" || resumed?.status === "finished") navigate({ to: "/game" });
   }, [resumed, navigate]);
 
   if (lobby === undefined) return <Shell>กำลังเชื่อมต่อ…</Shell>;

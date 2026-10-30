@@ -121,7 +121,7 @@ export type CardEffect = {
     | "roll_even_odd" // roll: even = sent to jail (กลับบ้าน), odd = go to start (+bonus)
     | "roll_threshold" // roll: sum >= threshold → +amount, else −amount
     | "nearest" // target: special_item | station | own ; move there (pass start bonus)
-    | "go_to_jail";
+    | "go_to_jail"; // optional amount: pay (negative) or receive (positive) on the way to the tub
   amount?: number;
   turns?: number;
   tileIndex?: number;
@@ -140,14 +140,14 @@ export const DEFAULT_CARDS: CardSeed[] = [
   { deck: "treasure", text: "จับผู้ร้ายได้ตามใบประกาศจับ รับเงินรางวัล 2,500 บาท", effect: { kind: "money", amount: 2500 } },
   { deck: "treasure", text: "เจอกระเป๋าเงินตก เอาไปคืนที่สถานีตำรวจ ได้เงินตอบแทน 1,200 บาท", effect: { kind: "money", amount: 1200 } },
   { deck: "treasure", text: "ซื้อของเล่นชิ้นใหม่ เสียเงิน 2,000 บาท", effect: { kind: "money", amount: -2000 } },
-  { deck: "treasure", text: "แวะซื้อขนม เสียเงิน 1,500 บาท และพักกินขนม 1 ตา", effect: { kind: "skip", turns: 1, amount: -1500 } },
+  { deck: "treasure", text: "กินขนมเลอะเทอะ เสียเงิน 1,500 บาท แล้วโดนจับไปอาบน้ำ", effect: { kind: "go_to_jail", amount: -1500 } },
   { deck: "treasure", text: "ได้เงินค่าพาเที่ยว จากผู้เล่นคนอื่นคนละ 500 บาท", effect: { kind: "collect_each", amount: 500 } },
   { deck: "treasure", text: "ชนะประกวดปั้นตุ๊กตาหิมะที่ขั้วโลกเหนือ รับเงินรางวัล 500 บาท", effect: { kind: "money", amount: 500 } },
   { deck: "treasure", text: "ขุดเจอหีบขนมกลางทะเลทราย รับเงิน 1,000 บาท", effect: { kind: "money", amount: 1000 } },
   { deck: "treasure", text: "เห่าไล่ยักษ์สำเร็จ รับเงินรางวัล 3,000 บาท", effect: { kind: "money", amount: 3000 } },
   { deck: "treasure", text: "ยักษ์จากตะเกียงวิเศษให้เงิน 5,000 บาท", effect: { kind: "money", amount: 5000 } },
   { deck: "treasure", text: "เจอสมบัติใต้มหาสมุทร รับเงิน 500 บาท", effect: { kind: "money", amount: 500 } },
-  { deck: "treasure", text: "แวะซื้อขนม เสียเงิน 500 บาท และพักกินขนม 1 ตา", effect: { kind: "skip", turns: 1, amount: -500 } },
+  { deck: "treasure", text: "เล่นโคลนเปื้อนไปทั้งตัว เสียเงิน 500 บาท แล้วโดนจับไปอาบน้ำ", effect: { kind: "go_to_jail", amount: -500 } },
   { deck: "treasure", text: "ค้นพบหีบสมบัติจากการผจญภัยโจรสลัด รับเงินรางวัล 2,000 บาท", effect: { kind: "money", amount: 2000 } },
   { deck: "treasure", text: "ถูกโจรสลัดปล้นระหว่างเดินทาง เสียเงิน 1,000 บาท", effect: { kind: "money", amount: -1000 } },
   { deck: "treasure", text: "วิ่งหนีไดโนเสาร์จนเงินหล่นหาย เสียเงิน 800 บาท", effect: { kind: "money", amount: -800 } },
@@ -158,10 +158,10 @@ export const DEFAULT_CARDS: CardSeed[] = [
   { deck: "special", text: "วิ่งตามแมวไปถึงโลกอนาคต ถ้าไม่มีเจ้าของซื้อได้ ถ้ามีเจ้าของจ่ายค่าเช่า 2 เท่า ผ่านบ้านรับ 2,000 บาท", effect: { kind: "move_to", tileIndex: 39, passStart: true, rentMultiplier: 2 } },
   { deck: "special", text: "ชามข้าวแตก ซื้อใหม่ เสียเงิน 3,500 บาท", effect: { kind: "money", amount: -3500 } },
   { deck: "special", text: "เตียงนุ่มฟูขาด ส่งซ่อม เสียเงิน 1,500 บาท", effect: { kind: "money", amount: -1500 } },
-  { deck: "special", text: "ตัวเหม็นแล้ว! โดนจับกลับบ้านไปอาบน้ำ ไปอ่างอาบน้ำทันที", effect: { kind: "go_to_jail" } },
+  { deck: "special", text: "ตัวเหม็นแล้ว! โดนจับไปอาบน้ำทันที", effect: { kind: "go_to_jail" } },
   { deck: "special", text: "โดนแมวกวักเรียก ถอยหลังกลับไป 3 ช่อง", effect: { kind: "move_by", steps: -3 } },
   { deck: "special", text: "ทอยลูกเต๋าเพื่อเดินทางอีก 1 ครั้ง", effect: { kind: "roll_again" } },
-  { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวมเป็นเลขคู่ โดนจับกลับบ้านไปอาบน้ำ ถ้าเลขคี่ เดินหน้าไปบ้านติ่มซำ รับ 2,000 บาท", effect: { kind: "roll_even_odd" } },
+  { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวมเป็นเลขคู่ โดนจับไปอาบน้ำ ถ้าเลขคี่ เดินหน้าไปบ้านติ่มซำ รับ 2,000 บาท", effect: { kind: "roll_even_odd" } },
   { deck: "special", text: "วิ่งไปช่องของเล่นที่ใกล้ที่สุด ถ้าไม่มีเจ้าของซื้อได้ ผ่านบ้านรับ 2,000 บาท", effect: { kind: "nearest", target: "special_item", passStart: true } },
   { deck: "special", text: "วิ่งไปร้านที่ใกล้ที่สุด ถ้าไม่มีเจ้าของซื้อได้ ผ่านบ้านรับ 2,000 บาท", effect: { kind: "nearest", target: "station", passStart: true } },
   { deck: "special", text: "ทอยลูกเต๋า ถ้าแต้มรวม 6 ขึ้นไป รับเงิน 2,000 บาท ถ้าน้อยกว่า 6 เสียเงิน 2,000 บาท", effect: { kind: "roll_threshold", threshold: 6, amount: 2000 } },
@@ -177,6 +177,8 @@ export type Rules = {
   jailFine: number;
   /** turns a player waits in jail before walking out for free */
   jailMaxTurns: number;
+  jailOnLanding: boolean;
+  jailOnLandingTurns: number;
   /** doubles allowed in one turn; one more than this sends you to jail */
   maxDoubles: number;
   /** rent multiplier per number of special items owned (index 0 = 1 item) */
@@ -213,6 +215,8 @@ export const DEFAULT_RULES: Rules = {
   passStartBonus: 2000,
   jailFine: 500,
   jailMaxTurns: 0,
+  jailOnLanding: true,
+  jailOnLandingTurns: 1,
   maxDoubles: 2,
   specialItemRent: [250, 500, 1000, 2000],
   stationRent: [50, 100],
@@ -237,6 +241,8 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   passStartBonus: "ค่าขนมเมื่อผ่านบ้าน",
   jailFine: "ค่าไถ่ออกจากอ่างอาบน้ำ",
   jailMaxTurns: "จำนวนตาที่รอในอ่างอาบน้ำก่อนออกฟรี (0 = ไม่มีออกฟรี ต้องทอยเบิ้ลหรือจ่ายค่าไถ่เท่านั้น)",
+  jailOnLanding: "ตกช่องอ่างอาบน้ำแล้วโดนจับเลย (ปิด = แค่แวะผ่าน ไม่โดนจับ)",
+  jailOnLandingTurns: "ตกช่องอ่างอาบน้ำ: ถ้าทอยไม่ได้เบิ้ลและไม่จ่าย รอกี่ตาถึงออกฟรี (0 = ไม่มีออกฟรี)",
   maxDoubles: "จำนวนเบิ้ลสูงสุดต่อตา (เกินนี้โดนจับอาบน้ำ)",
   specialItemRent: "ค่าเช่าของเล่น (มี 1, 2, 3, 4 ชิ้น)",
   stationRent: "ตัวคูณแต้มลูกเต๋าของร้าน (มี 1, 2 ร้าน)",

@@ -94,14 +94,18 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
         <Panel>
           <p className="font-semibold text-cocoa">อยู่ในอ่างอาบน้ำ 🛁</p>
           <p className="text-sm text-cocoa/70">ทอยให้ได้เบิ้ลเพื่อหนีออกมา หรือจ่ายค่าไถ่ {baht(view.rules.jailFine)}{view.rules.jailMaxTurns > 0 ? ` (รอ ${view.rules.jailMaxTurns} ตาแล้วออกฟรี)` : " (ไม่มีออกฟรี)"}</p>
-          <div className="flex gap-2">
-            <button className="btn-primary flex-1" disabled={disabled} onClick={() => actions.roll()}>
-              🎲 ทอยหาเบิ้ล
-            </button>
-            <button className="btn-secondary flex-1" disabled={disabled || me.cash < view.rules.jailFine} onClick={actions.payJail}>
-              จ่าย {baht(view.rules.jailFine)}
-            </button>
-          </div>
+          <button className="btn-primary w-full" disabled={disabled} onClick={() => actions.roll()}>
+            🎲 ทอยหาเบิ้ล
+          </button>
+          <button
+            className="self-center text-sm text-cocoa/70 underline underline-offset-4 py-1 disabled:opacity-40"
+            disabled={disabled || me.cash < view.rules.jailFine}
+            onClick={() => {
+              if (confirm(`จ่ายค่าไถ่ ${baht(view.rules.jailFine)} เพื่อออกจากอ่างอาบน้ำเลยไหม?`)) actions.payJail();
+            }}
+          >
+            หรือจ่ายค่าไถ่ {baht(view.rules.jailFine)} ออกเลย
+          </button>
         </Panel>
       );
     case "buy": {

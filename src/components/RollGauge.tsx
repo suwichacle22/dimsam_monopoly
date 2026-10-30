@@ -16,7 +16,7 @@ function pointAt(p: number) {
  * Release: rolls aiming at the number under the marker. A quick tap rolls
  * without aiming. `externalHold` lets a keyboard key drive the same gesture.
  */
-export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolean; externalHold?: boolean; onRoll: (target?: number) => void }) {
+export function RollGauge({ disabled, externalHold, onRoll, label = "ทอยลูกเต๋า" }: { disabled: boolean; externalHold?: boolean; onRoll: (target?: number) => void; label?: string }) {
   const [aiming, setAiming] = useState(false);
   const [pos, setPos] = useState(0);
   const startRef = useRef(0);
@@ -103,7 +103,7 @@ export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolea
         onContextMenu={(e) => e.preventDefault()}
         className={cx("btn-primary w-full -mt-4 touch-none", aiming && "translate-y-[2px] shadow-[0_2px_0_#b9803a] bg-[#d9994a]")}
       >
-        🎲 {aiming ? `ปล่อยเพื่อทอย ${target}` : "ทอยลูกเต๋า"}
+        🎲 {aiming ? `ปล่อยเพื่อทอย ${target}` : label}
         <kbd className="hidden sm:inline-block ml-2 text-xs font-normal bg-white/25 rounded px-1.5 py-0.5 align-middle">Space ค้าง</kbd>
       </button>
     </div>

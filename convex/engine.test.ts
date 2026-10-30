@@ -25,8 +25,8 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
       actionAt: 0,
     },
     players: [
-      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false, debt: 0 },
-      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false, debt: 0 },
+      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0 },
+      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0 },
     ],
     props: {},
     events: [],
@@ -180,6 +180,61 @@ describe("doubles", () => {
 });
 
 describe("jail (bath tub)", () => {
+  test("landing on the tub tile puts you in it", () => {
+    const s = makeSnap([4, 6]); // → tile 10
+    E.roll(s, 0);
+    expect(s.players[0].position).toBe(10);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.game.phase).toBe("end");
+    expect(s.game.moves.filter((m) => m.teleport)).toHaveLength(0); // no extra hop, already there
+    E.endTurn(s, 0);
+    s.game.phase = "end"; s.game.pending = undefined; E.endTurn(s, 1);
+    expect(s.game.turn).toBe(0);
+    expect(s.game.phase).toBe("jail");
+    // a tub landing is a one-turn stay: fail the double once, then walk out free next turn
+    s.roll = (() => { const q = [1, 2, 3, 4]; return () => q.shift()!; })();
+    E.roll(s, 0);
+    expect(s.players[0].inJail).toBe(true);
+    E.endTurn(s, 0);
+    E.roll(s, 1);
+    s.game.phase = "end"; s.game.pending = undefined; s.players[1].skipTurns = 0; E.endTurn(s, 1);
+    expect(s.game.turn).toBe(0);
+    expect(s.players[0].inJail).toBe(false);
+    expect(s.game.phase).toBe("roll");
+  });
+
+  test("an arrest (tile 30) has no free release even though a tub landing does", () => {
+    const s = makeSnap([2, 4, 1, 2, 3, 4]);
+    s.players[0].position = 24;
+    E.roll(s, 0); // 24 + 6 = 30 → sent to the tub, limit = jailMaxTurns (0)
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.players[0].jailLimit).toBe(0);
+    E.endTurn(s, 0);
+    E.roll(s, 1); s.game.phase = "end"; s.game.pending = undefined; s.players[1].skipTurns = 0; E.endTurn(s, 1);
+    expect(s.game.phase).toBe("jail");
+    E.roll(s, 0); // 3 + 4, no double → stays, and stays again next time
+    E.endTurn(s, 0);
+    s.game.phase = "end"; s.game.pending = undefined; s.players[1].skipTurns = 0; E.endTurn(s, 1);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.game.phase).toBe("jail");
+  });
+
+  test("surrender ends the game with the other player as winner", () => {
+    const s = makeSnap([1, 2]);
+    E.giveUp(s, 0);
+    expect(s.game.status).toBe("finished");
+    expect(s.game.winner).toBe(1);
+    expect(s.events[s.events.length - 1].text).toContain("ยอมแพ้");
+  });
+
+  test("with jailOnLanding off the tub tile is just a visit", () => {
+    const s = makeSnap([4, 6]);
+    s.rules.jailOnLanding = false;
+    E.roll(s, 0);
+    expect(s.players[0].inJail).toBe(false);
+    expect(s.game.phase).toBe("end");
+  });
+
   function jailed(dice: number[]) {
     const s = makeSnap(dice);
     s.players[0].inJail = true;
@@ -228,6 +283,7 @@ describe("jail (bath tub)", () => {
   test("with jailMaxTurns 1, failing the roll waits one turn then walks out free", () => {
     const s = jailed([1, 2, 4, 3]);
     s.rules.jailMaxTurns = 1;
+    s.players[0].jailLimit = 1; // what sendToJail would have stamped under that rule
     E.roll(s, 0);
     expect(s.players[0].inJail).toBe(true);
     expect(s.game.phase).toBe("end");
@@ -334,6 +390,14 @@ describe("cards", () => {
     E.roll(s, 0);
     expect(s.players[0].cash).toBe(30500);
     expect(s.players[1].cash).toBe(29500);
+  });
+
+  test("a go-to-jail card with a cost charges on the way to the tub", () => {
+    const s = withCard({ kind: "go_to_jail", amount: -1500 });
+    E.roll(s, 0);
+    expect(s.players[0].inJail).toBe(true);
+    expect(s.players[0].cash).toBe(30000 - 1500);
+    expect(s.events.find((e) => e.kind === "card_money")?.text).toBe("-1500");
   });
 
   test("a go-to-jail card sends you straight to the tub", () => {
@@ -714,11 +778,18 @@ describe("aim gauge", () => {
     expect(s.game.dice).toEqual([2, 3]);
   });
 
-  test("aiming is ignored for jail and card rolls", () => {
-    const s = makeSnap([1, 2], { rand: () => 0 });
+  test("aiming works in jail too (hunting for a double), but is ignored for card rolls", () => {
+    const s = makeSnap([1, 2], { rand: () => 0 }); // rand 0 → the aim always hits
     s.players[0].inJail = true;
     s.game.phase = "jail";
-    E.roll(s, 0, 8);
-    expect(s.game.dice).toEqual([1, 2]);
+    E.roll(s, 0, 12);
+    expect(s.game.dice).toEqual([6, 6]);
+    expect(s.players[0].inJail).toBe(false); // the double got them out
+
+    const c = makeSnap([1, 2], { rand: () => 0 });
+    c.game.phase = "card_roll";
+    c.game.pending = { kind: "card_roll", effect: { kind: "roll_threshold", threshold: 6, amount: 100 }, text: "x" };
+    E.roll(c, 0, 8);
+    expect(c.game.dice).toEqual([1, 2]);
   });
 });

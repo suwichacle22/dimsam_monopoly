@@ -66,6 +66,8 @@ export const rulesFields = {
   passStartBonus: v.number(),
   jailFine: v.number(),
   jailMaxTurns: v.number(),
+  jailOnLanding: v.optional(v.boolean()),
+  jailOnLandingTurns: v.optional(v.number()),
   maxDoubles: v.number(),
   specialItemRent: v.array(v.number()),
   stationRent: v.array(v.number()),
@@ -150,6 +152,7 @@ export default defineSchema({
     position: v.number(),
     inJail: v.boolean(),
     jailTurns: v.number(),
+    jailLimit: v.optional(v.number()),
     skipTurns: v.number(),
     bankrupt: v.boolean(),
     /** rent owed to the other player ("ติดไว้ก่อน") */

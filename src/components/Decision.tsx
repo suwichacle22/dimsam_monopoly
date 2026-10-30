@@ -5,8 +5,9 @@ import type { GameView } from "~/lib/game";
 import { tabPreview, wealth } from "~/lib/game";
 import { baht, cx, GROUP_COLORS } from "~/lib/format";
 import type { Actions } from "./ActionPanel";
+import { RollGauge } from "./RollGauge";
 
-export function Decision({ view, disabled, actions }: { view: GameView; disabled: boolean; actions: Actions }) {
+export function Decision({ view, disabled, actions, spaceHeld }: { view: GameView; disabled: boolean; actions: Actions; spaceHeld?: boolean }) {
   const g = view.game;
   const me = view.players.find((p) => p.seat === view.me)!;
   const r = view.rules;
@@ -59,11 +60,25 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
     case "jail":
       return (
         <Card band="#9ed8f5" title="โดนจับอาบน้ำอยู่ 🛁">
-          <Small>ทอยให้ได้เบิ้ลเพื่อหนี หรือจ่ายค่าไถ่ {baht(r.jailFine)}{r.jailMaxTurns > 0 ? ` · รอ ${r.jailMaxTurns} ตาแล้วออกฟรี` : " · ไม่มีออกฟรี"}</Small>
-          <div className="flex gap-[6px]">
+          <Small>
+            ทอยให้ได้เบิ้ลเพื่อหนี หรือจ่ายค่าไถ่ {baht(r.jailFine)}
+            {me.jailLimit > 0 ? ` · ถ้าไม่ได้ รอ ${me.jailLimit} ตาแล้วออกฟรี` : " · ไม่มีออกฟรี"}
+          </Small>
+          {r.gaugeEnabled ? (
+            <RollGauge disabled={disabled} externalHold={spaceHeld} onRoll={actions.roll} label="ทอยหาเบิ้ล" />
+          ) : (
             <Btn tone="primary" disabled={disabled} onClick={() => actions.roll()} label="🎲 ทอยหาเบิ้ล" />
-            <Btn tone="ghost" disabled={disabled || me.cash < r.jailFine} onClick={actions.payJail} label={`จ่าย ${baht(r.jailFine)}`} />
-          </div>
+          )}
+          <button
+            type="button"
+            className="self-center text-sm text-cocoa/70 underline underline-offset-4 py-1 disabled:opacity-40"
+            disabled={disabled || me.cash < r.jailFine}
+            onClick={() => {
+              if (confirm(`จ่ายค่าไถ่ ${baht(r.jailFine)} เพื่อออกจากอ่างอาบน้ำเลยไหม?`)) actions.payJail();
+            }}
+          >
+            หรือจ่ายค่าไถ่ {baht(r.jailFine)} ออกเลย
+          </button>
         </Card>
       );
     case "card_roll":

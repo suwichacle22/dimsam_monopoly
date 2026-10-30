@@ -18,7 +18,7 @@ import { Decision } from "~/components/Decision";
 import type { GameView, TileView } from "~/lib/game";
 import { buildBlocker, buildCost } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
-import { errorMessage } from "~/lib/format";
+import { cx, errorMessage } from "~/lib/format";
 import { isMuted, play, setMuted, unlockAudio } from "~/lib/sound";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { ThemeToggle } from "~/components/ThemeToggle";
@@ -48,6 +48,7 @@ function GamePage() {
     navigate({ to: "/" });
     return null;
   }
+  // "finished" falls through: the board stays up with the victory card until someone taps เล่นใหม่
   return <Game token={token} />;
 }
 
@@ -373,7 +374,7 @@ function Game({ token }: { token: string }) {
 
   // Space: in the normal roll phase hold-to-aim drives the gauge; elsewhere a plain roll. Escape closes sheets.
   const [spaceHeld, setSpaceHeld] = useState(false);
-  const gaugePhase = canRollNow && view!.game.phase === "roll" && view!.rules.gaugeEnabled;
+  const gaugePhase = canRollNow && (view!.game.phase === "roll" || view!.game.phase === "jail") && view!.rules.gaugeEnabled;
   useHotkey("Space", () => setSpaceHeld(true), { enabled: gaugePhase && !spaceHeld, eventType: "keydown", requireReset: true, conflictBehavior: "allow", preventDefault: "always" });
   useHotkey("Space", () => setSpaceHeld(false), { enabled: spaceHeld, eventType: "keyup", conflictBehavior: "allow", preventDefault: "always" });
   useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow && !gaugePhase, conflictBehavior: "allow", preventDefault: "always" });
@@ -454,7 +455,7 @@ function Game({ token }: { token: string }) {
           onPileClick={(d) => setDeckSheet(d)}
         />
         <CoinFlights flights={flights} />
-        {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} />}
+        {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} spaceHeld={spaceHeld} />}
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
@@ -526,14 +527,15 @@ function Game({ token }: { token: string }) {
       {view.game.status === "finished" && !busy && (
         <div className="fixed inset-0 z-50 bg-scrim/60 flex items-center justify-center p-6">
           <div className="card p-6 max-w-sm w-full text-center flex flex-col items-center gap-3 pop-in">
-            <div className="w-40 h-40">
+            <div className={cx("w-40 h-40", view.game.winner === view.me && "mascot-cheer")}>
               <Dimsam mood={view.game.winner === view.me ? "happy" : "sad"} variant={me?.variant} />
             </div>
-            <h2 className="text-2xl font-bold text-cocoa">
-              {view.game.winner === undefined ? "จบเกม" : `${view.players[view.game.winner]?.name} ชนะ! 🏆`}
+            <h2 className="text-3xl font-bold text-cocoa">
+              {view.game.winner === undefined ? "จบเกม" : view.game.winner === view.me ? "🏆 คุณชนะ!" : `🏆 ${view.players[view.game.winner]?.name} ชนะ!`}
             </h2>
+            <p className="text-sm text-cocoa/70">{[...view.events].reverse().find((e) => e.kind === "finish")?.text}</p>
             <p className="text-sm text-cocoa/70">
-              {view.game.winner === view.me ? "ติ่มซำภูมิใจในตัวคุณมาก" : "ไม่เป็นไร ขอแก้มืออีกรอบ"}
+              {view.game.winner === view.me ? "ติ่มซำภูมิใจในตัวคุณมาก 🐾" : "ไม่เป็นไร ขอแก้มืออีกรอบ"}
             </p>
             <button
               className="btn-primary w-full"

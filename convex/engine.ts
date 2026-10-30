@@ -58,6 +58,8 @@ export type PlayerState = {
   position: number;
   inJail: boolean;
   jailTurns: number;
+  /** failed jail turns after which this stay ends for free (0 = only a double or the fine) */
+  jailLimit: number;
   skipTurns: number;
   bankrupt: boolean;
   /** rent owed to the other player */
@@ -217,14 +219,14 @@ function charge(s: Snapshot, seat: number, amount: number, why: string, toSeat?:
   return true;
 }
 
-function bankrupt(s: Snapshot, seat: number) {
+function bankrupt(s: Snapshot, seat: number, why = "ล้มละลาย!") {
   const p = s.players[seat];
   p.bankrupt = true;
   const winner = s.players.find((x) => !x.bankrupt);
   s.game.status = "finished";
   s.game.winner = winner?.seat;
   s.game.pending = undefined;
-  log(s, "finish", `${p.name} ล้มละลาย! ${winner ? `${winner.name} ชนะ 🎉` : ""}`, seat);
+  log(s, "finish", `${p.name} ${why} ${winner ? `${winner.name} ชนะ 🎉` : ""}`, seat);
 }
 
 // ── movement ─────────────────────────────────────────────────────────────
@@ -256,10 +258,12 @@ function moveTo(s: Snapshot, seat: number, to: number, collectStart: boolean) {
   if (passes && collectStart) passStart(s, seat);
 }
 
-function sendToJail(s: Snapshot, seat: number, why: string) {
+function sendToJail(s: Snapshot, seat: number, why: string, limit = s.rules.jailMaxTurns) {
   const p = s.players[seat];
+  p.jailLimit = limit;
   const jail = s.tiles.find((t) => t.type === "jail");
-  setPosition(s, seat, jail?.index ?? 10, true);
+  const jailIndex = jail?.index ?? 10;
+  if (p.position !== jailIndex) setPosition(s, seat, jailIndex, true); // landing on the tub itself: no extra hop
   p.inJail = true;
   p.jailTurns = 0;
   s.game.doublesCount = 0;
@@ -305,6 +309,10 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
       }
       return;
     }
+    case "jail":
+      // the physical board's rule: being on the tub means you are in it (toggle: jailOnLanding)
+      if (s.rules.jailOnLanding) sendToJail(s, seat, "ตกช่องอ่างอาบน้ำ", s.rules.jailOnLandingTurns);
+      return;
     case "tax":
       s.events.push({ seat, kind: "tax", text: JSON.stringify({ amount: tile.amount ?? 0, tile: tile.index }) });
       charge(s, seat, tile.amount ?? 0, tile.name);
@@ -393,7 +401,7 @@ function applyEffect(s: Snapshot, seat: number, e: CardEffect, text: string) {
     }
     case "skip": {
       p.skipTurns += e.turns ?? 1;
-      log(s, "skip", `${p.name} พักกินขนม ${e.turns ?? 1} ตา`, seat);
+      log(s, "skip", `${p.name} พัก ${e.turns ?? 1} ตา`, seat);
       if (e.amount) s.events.push({ seat, kind: "card_money", text: String(e.amount) });
       if (e.amount && e.amount < 0) charge(s, seat, -e.amount, "การ์ด");
       else if (e.amount && e.amount > 0) gain(s, seat, e.amount, "การ์ด");
@@ -436,6 +444,13 @@ function applyEffect(s: Snapshot, seat: number, e: CardEffect, text: string) {
     }
     case "go_to_jail":
       sendToJail(s, seat, "การ์ด");
+      if (e.amount && e.amount < 0) {
+        s.events.push({ seat, kind: "card_money", text: String(e.amount) });
+        charge(s, seat, -e.amount, "การ์ด"); // may switch the phase to "broke"; the tub still waits next turn
+      } else if (e.amount && e.amount > 0) {
+        s.events.push({ seat, kind: "card_money", text: String(e.amount) });
+        gain(s, seat, e.amount, "การ์ด");
+      }
       return;
   }
 }
@@ -457,7 +472,7 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
   }
   if (p.skipTurns > 0) {
     p.skipTurns -= 1;
-    log(s, "skip", `${p.name} พักกินขนม ข้ามตานี้`, seat);
+    log(s, "skip", `${p.name} ยังพักอยู่ ข้ามตานี้`, seat);
     if (depth > s.players.length * 3) return; // safety valve
     return startTurnFor(s, (seat + 1) % s.players.length, depth + 1);
   }
@@ -468,7 +483,7 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
   }
   if (p.inJail) {
     // jailMaxTurns 0 = no free release: only a double or the fine gets you out
-    if (s.rules.jailMaxTurns > 0 && p.jailTurns >= s.rules.jailMaxTurns) {
+    if (p.jailLimit > 0 && p.jailTurns >= p.jailLimit) {
       p.inJail = false;
       p.jailTurns = 0;
       log(s, "jail", `${p.name} อาบน้ำเสร็จแล้ว ออกจากอ่างได้`, seat);
@@ -518,7 +533,7 @@ export function roll(s: Snapshot, seat: number, target?: number) {
   requireTurn(s, seat, "roll", "jail", "card_roll");
   const g = s.game;
   const p = s.players[seat];
-  const aimed = target !== undefined && s.rules.gaugeEnabled && g.phase === "roll" ? target : undefined;
+  const aimed = target !== undefined && s.rules.gaugeEnabled && (g.phase === "roll" || g.phase === "jail") ? target : undefined;
   const [a, b] = rollDice(s, aimed);
   g.dice = [a, b];
   const isDouble = a === b;
@@ -770,7 +785,7 @@ export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
 export function giveUp(s: Snapshot, seat: number) {
   if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
   begin(s);
-  bankrupt(s, seat);
+  bankrupt(s, seat, "ยอมแพ้");
 }
 
 export function endTurn(s: Snapshot, seat: number) {

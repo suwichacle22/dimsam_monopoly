@@ -258,7 +258,7 @@ const KIND_LABEL: Record<CardEffect["kind"], string> = {
   roll_even_odd: "ทอย: คู่โดนจับไปอาบน้ำ / คี่ไปจุดเริ่มต้น",
   roll_threshold: "ทอย: ≥ เกณฑ์ได้เงิน ไม่ถึงเสียเงิน",
   nearest: "ไปช่องประเภทที่ใกล้ที่สุด",
-  go_to_jail: "โดนจับไปอาบน้ำ",
+  go_to_jail: "โดนจับไปอาบน้ำ (+ เสีย/ได้เงินระหว่างทางได้)",
 };
 
 type CardDraft = { deck: "treasure" | "special"; text: string; effect: CardEffect; enabled: boolean };
@@ -321,7 +321,7 @@ function CardRow({ password, id, draft, onDone }: { password: string; id?: Doc<"
               ))}
             </select>
           </label>
-          {["money", "collect_each", "skip", "roll_threshold"].includes(e.kind) && (
+          {["money", "collect_each", "skip", "roll_threshold", "go_to_jail"].includes(e.kind) && (
             <Field label="จำนวนเงิน" value={e.amount} onChange={(v) => setE({ amount: v })} />
           )}
           {e.kind === "skip" && <Field label="พักกี่ตา" value={e.turns} onChange={(v) => setE({ turns: v })} />}
