@@ -268,8 +268,8 @@ function Game({ token }: { token: string }) {
     openTile: (i: number) => setSheet(view.tiles.find((t) => t.index === i) ?? null),
   };
 
-  const decisionPhase = ["buy", "jail", "card_roll", "world_tour", "debt"].includes(view.game.phase);
-  const overlay = myTurn && !busy && decisionPhase ? <Decision view={view} disabled={pendingAction} actions={actions} /> : undefined;
+  const decisionPhase = ["buy", "jail", "card_roll", "world_tour"].includes(view.game.phase);
+  const showDecision = myTurn && !busy && decisionPhase && !sheet;
 
   return (
     <main className="min-h-dvh p-2 sm:p-4 flex flex-col lg:flex-row gap-3 max-w-[1400px] mx-auto">
@@ -282,12 +282,12 @@ function Game({ token }: { token: string }) {
           dice={diceShown}
           rolling={rolling}
           animate
-          overlay={overlay}
           tilt={tilt3d ? 14 : 0}
           fx={fx}
           onTileClick={(t) => setSheet(t)}
         />
         <CoinFlights flights={flights} />
+        {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} />}
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />

@@ -154,3 +154,6 @@ body {
 }
 .coin { position: fixed; z-index: 70; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, #f5c518 55%, #b8860b); border: 1.5px solid #8a6508; box-shadow: 0 2px 3px rgba(0,0,0,.3); pointer-events: none;
   transition: transform 0.9s cubic-bezier(.3,.6,.3,1), opacity .3s ease .7s; }
+
+@keyframes sheet-up { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+.decision-card { animation: sheet-up .32s cubic-bezier(.2,.9,.3,1.1) both; }

@@ -50,15 +50,14 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
     );
   }
 
-  if (["buy", "jail", "card_roll", "world_tour", "debt"].includes(g.phase)) {
+  if (["buy", "jail", "card_roll", "world_tour"].includes(g.phase)) {
     return (
       <Panel tone="muted">
         <p className="text-cocoa/70">
-          {g.phase === "buy" && "เลือกซื้อหรือไม่ซื้อได้ที่กลางกระดาน"}
-          {g.phase === "jail" && "ทอยหาเบิ้ลหรือจ่ายค่าไถ่ได้ที่กลางกระดาน"}
-          {g.phase === "card_roll" && "ทอยลูกเต๋าตามการ์ดได้ที่กลางกระดาน"}
-          {g.phase === "world_tour" && "เลือกที่จะไปเดินเล่นได้ที่กลางกระดาน"}
-          {g.phase === "debt" && "ขายทรัพย์สินโดยแตะที่ดินของคุณบนกระดาน"}
+          {g.phase === "buy" && "เลือกซื้อหรือไม่ซื้อได้ในหน้าต่างที่เด้งขึ้นมา"}
+          {g.phase === "jail" && "ทอยหาเบิ้ลหรือจ่ายค่าไถ่ได้ในหน้าต่างที่เด้งขึ้นมา"}
+          {g.phase === "card_roll" && "ทอยลูกเต๋าตามการ์ดได้ในหน้าต่างที่เด้งขึ้นมา"}
+          {g.phase === "world_tour" && "เลือกที่จะไปเดินเล่นได้ในหน้าต่างที่เด้งขึ้นมา"}
         </p>
       </Panel>
     );
