@@ -15,6 +15,7 @@ import { CardToast } from "~/components/CardToast";
 import { TileSheet } from "~/components/TileSheet";
 import { Decision } from "~/components/Decision";
 import type { GameView, TileView } from "~/lib/game";
+import { buildBlocker, buildCost } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
 import { errorMessage } from "~/lib/format";
 import { isMuted, play, setMuted, unlockAudio } from "~/lib/sound";
@@ -282,6 +283,30 @@ function Game({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botTurn, busyNow, view?.game.phase, view?.game.actionAt, token]);
 
+  // auto end-turn: once everything has settled, end the turn by itself. If a house could be
+  // built where the player stands, give them a few seconds first.
+  const [autoEndAt, setAutoEndAt] = useState<number | null>(null);
+  const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !rolling && !walking && !card && !burst && !sheet && !pendingAction;
+  const autoEnabled = !!view && view.rules.autoEndTurn && !view.players[view.me]?.bot;
+  useEffect(() => {
+    if (!settled || !autoEnabled || !view) {
+      setAutoEndAt(null);
+      return;
+    }
+    const me = view.players[view.me];
+    const here = view.tiles.find((t) => t.index === me.position);
+    const canBuild = !!here && buildBlocker(view, view.me, here) === null && me.cash >= buildCost(view, here).cost;
+    const delay = canBuild ? Math.max(1, view.rules.autoEndDelay) * 1000 : 700;
+    const at = Date.now() + delay;
+    setAutoEndAt(at);
+    const id = setTimeout(() => {
+      setAutoEndAt(null);
+      m.endTurn({ token }).catch(() => {});
+    }, delay);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settled, autoEnabled, view?.game.actionAt, token]);
+
   const run = useCallback(async (fn: () => Promise<unknown>, optimisticRoll = false) => {
     setError(null);
     setPendingAction(true);
@@ -371,7 +396,7 @@ function Game({ token }: { token: string }) {
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
-        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} />
+        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} autoEndAt={autoEndAt} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
         {view.players.some((p) => p.bot) && (
