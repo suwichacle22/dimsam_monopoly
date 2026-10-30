@@ -224,3 +224,18 @@ body {
 
 /* never let the browser re-anchor the scroll position when panels change size */
 .game-main { overflow-anchor: none; }
+
+/* ── player pieces: coloured halo, name tag, outline so they stand out on the art ── */
+.piece-body { filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 6px var(--piece)) drop-shadow(0 4px 2px rgba(0,0,0,.35)); position: relative; z-index: 1; }
+.piece-halo { position: absolute; left: 50%; top: 100%; width: 118%; height: 44%; transform: translate(-50%, -62%);
+  border-radius: 50%; background: radial-gradient(ellipse at center, var(--piece) 0%, color-mix(in srgb, var(--piece) 55%, transparent) 45%, transparent 72%);
+  opacity: .85; }
+.piece-halo-active { animation: piece-pulse 1.3s ease-in-out infinite; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--piece), 0 0 22px 10px var(--piece); }
+@keyframes piece-pulse {
+  0%, 100% { transform: translate(-50%, -62%) scale(1); opacity: .85; }
+  50% { transform: translate(-50%, -62%) scale(1.18); opacity: 1; }
+}
+.piece-tag { position: absolute; left: 50%; bottom: 96%; transform: translateX(-50%); z-index: 2; white-space: nowrap; max-width: 220%; overflow: hidden; text-overflow: ellipsis;
+  font-size: clamp(8px, 1.35vw, 12px); font-weight: 700; line-height: 1; padding: 2px 6px; border-radius: 999px;
+  color: #fff; background: var(--piece); border: 1.5px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.35); }
+.piece-tag-me { background: #fff; color: var(--piece); border-color: var(--piece); }

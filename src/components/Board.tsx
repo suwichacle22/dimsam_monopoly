@@ -24,6 +24,8 @@ export function tileCenter(index: number): { x: number; y: number } {
 
 export type TileFx = { index: number; kind: "land" | "buy" | "build"; key: number };
 
+const PIECE_COLOR = { blue: "#4fa7e8", pink: "#f06aa8" } as const;
+
 export function Board({
   view,
   displayPos,
@@ -124,25 +126,33 @@ export function Board({
         const c = tileCenter(pos);
         const other = view.players.find((o) => o.seat !== p.seat);
         const shared = other && (displayPos[other.seat] ?? other.position) === pos;
-        const dx = shared ? (p.seat === 0 ? -1.4 : 1.4) : 0;
+        const dx = shared ? (p.seat === 0 ? -1.6 : 1.6) : 0;
         const dy = shared ? (p.seat === 0 ? -1.2 : 1.2) : 0;
+        const color = PIECE_COLOR[p.variant];
+        const active = view.game.status === "playing" && view.game.turn === p.seat;
+        const isMe = p.seat === view.me;
         return (
           <div
             key={p.seat}
-            className="absolute pointer-events-none z-[3]"
+            className="absolute pointer-events-none"
             style={{
               left: `${c.x + dx}%`,
               top: `${c.y + dy}%`,
-              width: "5.6%",
-              maxWidth: 46,
-              transform: "translate(-50%, -60%)",
+              width: "8.2%",
+              maxWidth: 68,
+              zIndex: active ? 4 : 3,
+              transform: "translate(-50%, -62%)",
               transition: "left 0.22s ease-in-out, top 0.22s ease-in-out",
+              ["--piece" as string]: color,
             }}
           >
             <div
               style={{ transform: tilt ? `rotateX(calc(-1 * var(--tilt))) translateZ(6px)` : undefined, transformOrigin: "50% 100%" }}
             >
-              <div key={hop} className={cx("token-hop w-full aspect-square drop-shadow-[0_3px_0_rgba(0,0,0,0.25)]", p.bankrupt && "opacity-30 grayscale")}>
+              {/* coloured halo on the tile + pulsing ring for the player whose turn it is */}
+              <div className={cx("piece-halo", active && "piece-halo-active")} />
+              <div className={cx("piece-tag", isMe && "piece-tag-me")}>{isMe ? "คุณ" : p.name}</div>
+              <div key={hop} className={cx("token-hop piece-body w-full aspect-square", p.bankrupt && "opacity-30 grayscale")}>
                 <DimsamToken variant={p.variant} animate={animate} />
               </div>
             </div>
