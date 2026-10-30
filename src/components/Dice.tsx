@@ -56,12 +56,14 @@ export function Dice({ values, rolling, size = 56 }: { values: number[]; rolling
     </>
   );
   return (
-    <div className="flex gap-3 items-center justify-center" style={{ perspective: size * 9 }}>
+    <div className="dice flex gap-3 items-center justify-center">
       {[0, 1].map((i) => (
+        // perspective sits on each die, not the row: a shared vanishing point let the
+        // side faces of the off-centre dice peek out as a thin strip beside the front face
         <div
           key={i}
           className={cx("relative", rolling && "dice-bounce")}
-          style={{ width: size, height: size, animationDelay: `${i * 70}ms` }}
+          style={{ width: size, height: size, animationDelay: `${i * 70}ms`, perspective: size * 9 }}
         >
           <div
             className={cx("absolute inset-0", rolling && "dice-spin")}
