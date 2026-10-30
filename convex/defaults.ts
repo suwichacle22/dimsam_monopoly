@@ -204,10 +204,8 @@ export type Rules = {
   gaugeEnabled: boolean;
   /** chance (0–1) that an aimed roll lands exactly on the aimed total */
   gaugeAccuracy: number;
-  /** end the turn automatically once the animations finish */
+  /** end the turn automatically once the animations finish (unless a house could still be built) */
   autoEndTurn: boolean;
-  /** seconds to decide about building before the turn auto-ends (only when building is possible) */
-  autoEndDelay: number;
 };
 
 export const DEFAULT_RULES: Rules = {
@@ -232,7 +230,6 @@ export const DEFAULT_RULES: Rules = {
   gaugeEnabled: true,
   gaugeAccuracy: 0.6,
   autoEndTurn: true,
-  autoEndDelay: 6,
 };
 
 export const RULE_LABELS: Record<keyof Rules, string> = {
@@ -256,6 +253,5 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   maxDebt: "ติดค่าเช่าอีกฝ่ายได้สูงสุด (0 = ปิด ต้องจ่ายสดเสมอ)",
   gaugeEnabled: "เกจเล็งลูกเต๋า (กดปุ่มค้างเพื่อเล็งแต้ม)",
   gaugeAccuracy: "โอกาสที่เล็งแล้วได้แต้มตรงเป้า (0 = สุ่มล้วน, 1 = ตรงทุกครั้ง)",
-  autoEndTurn: "จบตาอัตโนมัติเมื่อแอนิเมชันจบ",
-  autoEndDelay: "วินาทีให้ตัดสินใจสร้างบ้านก่อนจบตาอัตโนมัติ",
+  autoEndTurn: "จบตาอัตโนมัติ (หลังซื้อ/สร้างสำเร็จ หรือเมื่อไม่มีอะไรให้สร้าง)",
 };

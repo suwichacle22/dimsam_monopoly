@@ -2,7 +2,6 @@ import type { GameView } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
 import { buildBlocker, buildCost, wealth } from "~/lib/game";
 import { RollGauge } from "./RollGauge";
-import { useEffect, useState } from "react";
 
 export type Actions = {
   roll: (target?: number) => void;
@@ -18,7 +17,7 @@ export type Actions = {
   openTile: (tileIndex: number) => void;
 };
 
-export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, autoEndAt }: { view: GameView; busy: boolean; pendingAction: boolean; actions: Actions; spaceHeld?: boolean; autoEndAt?: number | null }) {
+export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, autoEnding }: { view: GameView; busy: boolean; pendingAction: boolean; actions: Actions; spaceHeld?: boolean; autoEnding?: boolean }) {
   const g = view.game;
   const me = view.players.find((p) => p.seat === view.me)!;
   const current = view.players[g.turn];
@@ -181,7 +180,6 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
       const blocker = buildBlocker(view, view.me, here);
       const bc = buildCost(view, here);
       const ownHere = view.props.find((p) => p.tileIndex === here.index)?.ownerSeat === view.me && here.type === "city";
-      const canBuildHere = ownHere && blocker === null && me.cash >= bc.cost;
       return (
         <Panel>
           <p className="font-semibold text-cocoa">{g.lastRollDouble ? "ทอยเบิ้ล! ได้ทอยอีกครั้ง" : "จบตาของคุณ"}</p>
@@ -191,9 +189,7 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
             </button>
           )}
           {ownHere && blocker !== null && blocker !== "สร้างเต็มแล้ว" && <Hint>{blocker}</Hint>}
-          {autoEndAt && canBuildHere ? (
-            <Countdown until={autoEndAt} label={g.lastRollDouble ? "ทอยอีกครั้งใน" : "จบตาอัตโนมัติใน"} onSkip={actions.endTurn} skipLabel={g.lastRollDouble ? "ทอยเลย" : "จบตาเลย"} disabled={disabled} />
-          ) : autoEndAt ? (
+          {autoEnding ? (
             <p className="text-sm text-cocoa/60 text-center">{g.lastRollDouble ? "กำลังไปทอยอีกครั้ง…" : "จบตาอัตโนมัติ…"}</p>
           ) : (
             <button className="btn-primary w-full" disabled={disabled} onClick={actions.endTurn}>
@@ -229,19 +225,3 @@ function Hint({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-cocoa/50">{children}</p>;
 }
 
-function Countdown({ until, label, onSkip, skipLabel, disabled }: { until: number; label: string; onSkip: () => void; skipLabel: string; disabled: boolean }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(id);
-  }, []);
-  const left = Math.max(0, Math.ceil((until - now) / 1000));
-  return (
-    <button className="btn-secondary w-full flex items-center justify-between" disabled={disabled} onClick={onSkip}>
-      <span>{skipLabel}</span>
-      <span className="text-xs text-cocoa/60 tabular-nums">
-        {label} {left} วิ
-      </span>
-    </button>
-  );
-}

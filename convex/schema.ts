@@ -83,7 +83,6 @@ export const rulesFields = {
   gaugeEnabled: v.optional(v.boolean()),
   gaugeAccuracy: v.optional(v.number()),
   autoEndTurn: v.optional(v.boolean()),
-  autoEndDelay: v.optional(v.number()),
 };
 
 export const phase = v.union(

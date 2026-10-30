@@ -283,26 +283,29 @@ function Game({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botTurn, busyNow, view?.game.phase, view?.game.actionAt, token]);
 
-  // auto end-turn: once everything has settled, end the turn by itself. If a house could be
-  // built where the player stands, give them a few seconds first.
-  const [autoEndAt, setAutoEndAt] = useState<number | null>(null);
+  // auto end-turn: once everything has settled, end the turn by itself, except when the player
+  // could still build a house where they stand (then they press build or จบตา themselves).
+  // A successful land/house purchase or a build always ends the turn.
+  const [autoEnding, setAutoEnding] = useState(false);
   const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !rolling && !walking && !card && !burst && !sheet && !pendingAction;
   const autoEnabled = !!view && view.rules.autoEndTurn && !view.players[view.me]?.bot;
   useEffect(() => {
     if (!settled || !autoEnabled || !view) {
-      setAutoEndAt(null);
+      setAutoEnding(false);
       return;
     }
     const me = view.players[view.me];
     const here = view.tiles.find((t) => t.index === me.position);
     const canBuild = !!here && buildBlocker(view, view.me, here) === null && me.cash >= buildCost(view, here).cost;
-    const delay = canBuild ? Math.max(1, view.rules.autoEndDelay) * 1000 : 700;
-    const at = Date.now() + delay;
-    setAutoEndAt(at);
+    const justActed = view.events.some((e) => e.at === view.game.actionAt && e.seat === view.me && (e.kind === "build" || (e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))));
+    if (canBuild && !justActed) {
+      setAutoEnding(false);
+      return;
+    }
+    setAutoEnding(true);
     const id = setTimeout(() => {
-      setAutoEndAt(null);
       m.endTurn({ token }).catch(() => {});
-    }, delay);
+    }, 700);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settled, autoEnabled, view?.game.actionAt, token]);
@@ -396,7 +399,7 @@ function Game({ token }: { token: string }) {
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
-        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} autoEndAt={autoEndAt} />
+        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} autoEnding={autoEnding} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
         {view.players.some((p) => p.bot) && (
