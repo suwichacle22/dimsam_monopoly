@@ -58,7 +58,7 @@ export function RollGauge({ disabled, externalHold, onRoll }: { disabled: boolea
 
   return (
     <div className="flex flex-col items-center gap-1 select-none">
-      <svg viewBox="0 0 200 118" className="w-full max-w-[260px]" aria-hidden>
+      <svg viewBox="0 0 200 118" className="w-full max-w-[230px]" aria-hidden>
         <path d={arc} stroke="rgba(107,74,43,.18)" strokeWidth="12" fill="none" strokeLinecap="round" />
         <path d={arc} stroke="url(#rg-grad)" strokeWidth="8" fill="none" strokeLinecap="round" opacity={aiming ? 1 : 0.45} />
         <defs>

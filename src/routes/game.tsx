@@ -332,9 +332,24 @@ function Game({ token }: { token: string }) {
   // Space: in the normal roll phase hold-to-aim drives the gauge; elsewhere a plain roll. Escape closes sheets.
   const [spaceHeld, setSpaceHeld] = useState(false);
   const gaugePhase = canRollNow && view!.game.phase === "roll" && view!.rules.gaugeEnabled;
-  useHotkey("Space", () => setSpaceHeld(true), { enabled: gaugePhase && !spaceHeld, eventType: "keydown", requireReset: true, conflictBehavior: "allow" });
-  useHotkey("Space", () => setSpaceHeld(false), { enabled: spaceHeld, eventType: "keyup", conflictBehavior: "allow" });
-  useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow && !gaugePhase, conflictBehavior: "allow" });
+  useHotkey("Space", () => setSpaceHeld(true), { enabled: gaugePhase && !spaceHeld, eventType: "keydown", requireReset: true, conflictBehavior: "allow", preventDefault: "always" });
+  useHotkey("Space", () => setSpaceHeld(false), { enabled: spaceHeld, eventType: "keyup", conflictBehavior: "allow", preventDefault: "always" });
+  useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow && !gaugePhase, conflictBehavior: "allow", preventDefault: "always" });
+  // Space must never page-scroll the board (key repeat while holding, focused buttons, etc.)
+  useEffect(() => {
+    const block = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", block, { capture: true });
+    window.addEventListener("keyup", block, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", block, { capture: true });
+      window.removeEventListener("keyup", block, { capture: true });
+    };
+  }, []);
   useEffect(() => {
     if (!gaugePhase) setSpaceHeld(false);
   }, [gaugePhase]);
@@ -380,7 +395,7 @@ function Game({ token }: { token: string }) {
   const showDecision = myTurn && !busy && decisionPhase && !sheet;
 
   return (
-    <main className="min-h-dvh p-2 sm:p-4 flex flex-col lg:flex-row gap-3 max-w-[1400px] mx-auto">
+    <main className="game-main min-h-dvh p-2 sm:p-4 flex flex-col lg:flex-row gap-3 max-w-[1400px] mx-auto">
       <section className="w-full lg:flex-1 lg:max-w-[min(100%,calc(100dvh-2rem))] mx-auto">
         <Board
           view={view}

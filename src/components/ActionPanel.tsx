@@ -2,6 +2,7 @@ import type { GameView } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
 import { buildBlocker, buildCost, wealth } from "~/lib/game";
 import { RollGauge } from "./RollGauge";
+import { Dimsam } from "~/art/Dimsam";
 
 export type Actions = {
   roll: (target?: number) => void;
@@ -37,7 +38,10 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
   if (!mine) {
     return (
       <Panel tone="muted">
-        <p className="text-cocoa/70">
+        <div className="w-20 h-20 self-center -mb-2">
+          <Dimsam mood="sleep" variant={me.variant} />
+        </div>
+        <p className="text-cocoa/70 text-center">
           {current?.bot ? "🤖 " : ""}รอ <b className="text-cocoa">{current?.name}</b>{" "}
           {g.phase === "roll" && "ทอยลูกเต๋า"}
           {g.phase === "jail" && "ทอยหาเบิ้ลในอ่างอาบน้ำ"}
@@ -49,7 +53,7 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
           {g.phase === "end" && "จบตา"}
           …
         </p>
-        <p className="text-xs text-cocoa/50">หน้าจอนี้จะอัปเดตเองทันทีที่อีกฝ่ายกด</p>
+        <p className="text-xs text-cocoa/50 text-center">หน้าจอนี้จะอัปเดตเองทันทีที่อีกฝ่ายกด</p>
       </Panel>
     );
   }
@@ -211,7 +215,8 @@ function Panel({ children, tone = "normal" }: { children: React.ReactNode; tone?
   return (
     <div
       className={cx(
-        "card p-4 flex flex-col gap-3 pop-in",
+        // fixed minimum height so the panel never changes size between phases (no layout jumps)
+        "card p-4 flex flex-col gap-3 pop-in min-h-[272px] justify-center",
         tone === "muted" && "bg-cream-2/60",
         tone === "danger" && "border-berry/40",
       )}
