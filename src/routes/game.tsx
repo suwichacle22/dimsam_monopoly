@@ -55,6 +55,8 @@ function Game({ token }: { token: string }) {
     roll: useMutation(api.game.roll),
     buy: useMutation(api.game.buy),
     skipBuy: useMutation(api.game.skipBuy),
+    payRent: useMutation(api.game.payRent),
+    payDebt: useMutation(api.game.payDebt),
     payJail: useMutation(api.game.payJail),
     worldTour: useMutation(api.game.worldTour),
     build: useMutation(api.game.build),
@@ -215,24 +217,30 @@ function Game({ token }: { token: string }) {
           if (cancelled) return;
         }
       }
-      // rent burst: shown from this phone's point of view (payer loses, owner gains)
+      // rent burst: shown from this phone's point of view (payer loses, owner gains, or it goes on the tab)
       const rentEv = fresh.find((e) => e.kind === "rent");
       if (rentEv && rentEv.seat !== undefined) {
-        const r = JSON.parse(rentEv.text) as { to: number; amount: number; tile: number; landmark: boolean; houses: number };
+        const r = JSON.parse(rentEv.text) as { to: number; amount: number; tile: number; landmark: boolean; houses: number; cash: number; offset: number; tabbed: number };
         const payer = v.players[rentEv.seat];
         const owner = v.players[r.to];
         const tile = v.tiles.find((t) => t.index === r.tile);
         const iOwn = r.to === v.me;
         const what = r.landmark ? "แลนด์มาร์ก ★" : r.houses > 0 ? `บ้าน ${r.houses} หลัง` : tile?.type === "station" ? "ร้าน" : tile?.type === "special_item" ? "ของเล่น" : "ที่ดิน";
+        const onTab = r.offset > 0 || r.tabbed > 0;
+        const bits: string[] = [];
+        if (r.offset > 0) bits.push(`หักหนี้ ${r.offset.toLocaleString()}`);
+        if (r.tabbed > 0) bits.push(`ติดไว้ ${r.tabbed.toLocaleString()}`);
+        if (r.cash > 0) bits.push(`จ่ายสด ${r.cash.toLocaleString()}`);
         setBurst({
           id: actionAt + 1,
           amount: iOwn ? r.amount : -r.amount,
-          label: iOwn ? `${payer.name} มาจ่ายค่าเช่า` : `จ่ายค่าเช่าให้ ${owner.name}`,
+          tone: onTab ? "tab" : iOwn ? "win" : "lose",
+          label: onTab ? (iOwn ? `${payer.name} ติดค่าเช่าไว้ก่อน` : `ติด ${owner.name} ไว้ก่อน`) : iOwn ? `${payer.name} มาจ่ายค่าเช่า` : `จ่ายค่าเช่าให้ ${owner.name}`,
           kicker: `ค่าเช่า ${tile?.name ?? ""}`,
-          detail: `${what}${r.landmark ? " · ค่าเช่าสูงสุด!" : ""}`,
+          detail: `${what}${r.landmark ? " · ค่าเช่าสูงสุด!" : ""}${onTab ? ` · ${bits.join(" · ")}` : ""}`,
           variant: iOwn ? owner.variant : payer.variant,
         });
-        play(iOwn ? "prize" : "penalty");
+        play(onTab ? "tab" : iOwn ? "prize" : "penalty");
         await sleep(2300);
         if (cancelled) return;
       }
@@ -311,15 +319,17 @@ function Game({ token }: { token: string }) {
             ? "soggy"
             : !myTurn
               ? "sleep"
-              : view.game.phase === "debt"
+              : view.game.phase === "broke"
                 ? "sad"
-                : ["buy", "world_tour", "card_roll"].includes(view.game.phase)
+                : ["buy", "rent", "world_tour", "card_roll"].includes(view.game.phase)
                   ? "think"
                   : "idle";
 
   const actions = {
     roll: () => run(() => m.roll({ token }), true),
     buy: (withHouse = false) => run(() => m.buy({ token, withHouse })),
+    payRent: (mode: "cash" | "tab") => run(() => m.payRent({ token, mode })),
+    payDebt: (amount?: number) => run(() => m.payDebt({ token, amount })),
     build: (tileIndex: number) => run(() => m.build({ token, tileIndex })),
     skipBuy: () => run(() => m.skipBuy({ token })),
     payJail: () => run(() => m.payJail({ token })),
@@ -331,7 +341,7 @@ function Game({ token }: { token: string }) {
     openTile: (i: number) => setSheet(view.tiles.find((t) => t.index === i) ?? null),
   };
 
-  const decisionPhase = ["buy", "jail", "card_roll", "world_tour"].includes(view.game.phase);
+  const decisionPhase = ["buy", "rent", "jail", "card_roll", "world_tour"].includes(view.game.phase);
   const showDecision = myTurn && !busy && decisionPhase && !sheet;
 
   return (
@@ -356,7 +366,7 @@ function Game({ token }: { token: string }) {
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
-        <PlayerPanel view={view} onTile={actions.openTile} />
+        <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
         {view.players.some((p) => p.bot) && (
           <TestPanel
             view={view}

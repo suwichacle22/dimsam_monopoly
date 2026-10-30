@@ -47,7 +47,7 @@ export function canSellNow(view: GameView, seat: number, tile: TileView): boolea
   const prop = propAt(view, tile.index);
   if (!prop || prop.ownerSeat !== seat) return false;
   if (view.game.turn !== seat) return false;
-  return ["roll", "end", "jail", "debt", "world_tour"].includes(view.game.phase);
+  return ["roll", "end", "jail", "broke", "world_tour"].includes(view.game.phase);
 }
 
 export function rentPreview(view: GameView, tile: TileView, diceSum = 7): number {
@@ -80,6 +80,16 @@ export function landSellValue(view: GameView, tile: TileView): number {
 export function houseSellValue(view: GameView, tile: TileView, landmark: boolean): number {
   const r = view.rules;
   return Math.floor((tile.housePrice ?? 0) * (landmark ? r.landmarkCostMultiplier : 1) * r.houseSellBackRatio);
+}
+
+/** How a "tab" payment of `amount` would split for `seat` right now. */
+export function tabPreview(view: GameView, seat: number, amount: number): { offset: number; tabbed: number; cash: number } {
+  const me = view.players.find((p) => p.seat === seat)!;
+  const other = view.players.find((p) => p.seat !== seat);
+  const offset = Math.min(amount, other?.debt ?? 0);
+  const room = Math.max(0, view.rules.maxDebt - me.debt);
+  const tabbed = Math.min(amount - offset, room);
+  return { offset, tabbed, cash: amount - offset - tabbed };
 }
 
 /** Purchase value of everything a player owns, and what the bank would pay for it now. */

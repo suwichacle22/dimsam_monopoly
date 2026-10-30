@@ -38,6 +38,7 @@ const publicPlayer = (p: Doc<"players">) => ({
   jailTurns: p.jailTurns,
   skipTurns: p.skipTurns,
   bankrupt: p.bankrupt,
+  debt: p.debt ?? 0,
   bot: p.bot ?? false,
   online: p.bot ? true : Date.now() - p.lastSeen < 45_000,
 });
@@ -187,12 +188,17 @@ export const botStep = mutation({
           else E.skipBuy(s, seat);
           break;
         }
+        case "rent": {
+          const amount = (game.pending as { amount: number }).amount;
+          E.payRent(s, seat, p.cash - amount >= 6000 || p.debt + amount > s.rules.maxDebt ? "cash" : "tab");
+          break;
+        }
         case "world_tour": {
           const own = E.ownedBy(s, seat);
           E.worldTour(s, seat, own.length ? own[Math.floor(Math.random() * own.length)] : undefined);
           break;
         }
-        case "debt": {
+        case "broke": {
           const own = E.ownedBy(s, seat).sort((a, b) => (s.tiles.find((t) => t.index === a)?.price ?? 0) - (s.tiles.find((t) => t.index === b)?.price ?? 0));
           const withHouses = own.find((i) => s.props[i].houses > 0 || s.props[i].landmark);
           if (withHouses !== undefined) E.sellHouse(s, seat, withHouses);
@@ -209,6 +215,7 @@ export const botStep = mutation({
               /* not allowed right now */
             }
           }
+          if (p.debt > 0 && p.cash - p.debt >= 10000) E.payDebt(s, seat);
           E.endTurn(s, seat);
           break;
         }
@@ -353,6 +360,14 @@ export const roll = mutation({
 export const buy = mutation({
   args: { token: v.string(), withHouse: v.optional(v.boolean()) },
   handler: (ctx, { token, withHouse }) => act(ctx, token, (s, seat) => E.buy(s, seat, withHouse ?? false)),
+});
+export const payRent = mutation({
+  args: { token: v.string(), mode: v.union(v.literal("cash"), v.literal("tab")) },
+  handler: (ctx, { token, mode }) => act(ctx, token, (s, seat) => E.payRent(s, seat, mode)),
+});
+export const payDebt = mutation({
+  args: { token: v.string(), amount: v.optional(v.number()) },
+  handler: (ctx, { token, amount }) => act(ctx, token, (s, seat) => E.payDebt(s, seat, amount)),
 });
 export const skipBuy = mutation({
   args: { token: v.string() },

@@ -21,13 +21,14 @@ export type Tile = {
 
 export type Card = { id: string; deck: "treasure" | "special"; text: string; effect: CardEffect };
 
-export type Phase = "roll" | "jail" | "buy" | "card_roll" | "world_tour" | "debt" | "end";
+export type Phase = "roll" | "jail" | "buy" | "rent" | "card_roll" | "world_tour" | "broke" | "end";
 
 export type Pending =
   | { kind: "buy"; tileIndex: number }
   | { kind: "card_roll"; effect: CardEffect; text: string }
+  | { kind: "rent"; tileIndex: number; amount: number; toSeat: number }
   | { kind: "world_tour" }
-  | { kind: "debt"; amount: number; toSeat?: number };
+  | { kind: "broke"; amount: number; toSeat?: number };
 
 export type GameState = {
   status: "lobby" | "playing" | "finished";
@@ -57,6 +58,8 @@ export type PlayerState = {
   jailTurns: number;
   skipTurns: number;
   bankrupt: boolean;
+  /** rent owed to the other player */
+  debt: number;
 };
 
 export type Prop = { ownerSeat: number; houses: number; landmark: boolean };
@@ -199,9 +202,9 @@ function charge(s: Snapshot, seat: number, amount: number, why: string, toSeat?:
   if (toSeat !== undefined) s.players[toSeat].cash += amount;
   log(s, "money", `${p.name} จ่าย ${fmt(amount)} บาท (${why})`, seat);
   if (p.cash < 0) {
-    s.game.phase = "debt";
-    s.game.pending = { kind: "debt", amount: -p.cash, toSeat };
-    log(s, "debt", `${p.name} เงินไม่พอ ต้องขายทรัพย์สิน ${fmt(-p.cash)} บาท`, seat);
+    s.game.phase = "broke";
+    s.game.pending = { kind: "broke", amount: -p.cash, toSeat };
+    log(s, "broke", `${p.name} เงินไม่พอ ต้องขายทรัพย์สิน ${fmt(-p.cash)} บาท`, seat);
     if (p.cash + liquidationValue(s, seat) < 0) {
       bankrupt(s, seat);
     }
@@ -286,8 +289,13 @@ function land(s: Snapshot, seat: number, opts: { rentMultiplier?: number; diceSu
         const base = rentFor(s, tile.index, opts.diceSum ?? g.dice[0] + g.dice[1]);
         const rent = base * (opts.rentMultiplier ?? 1);
         if (rent > 0) {
-          s.events.push({ seat, kind: "rent", text: JSON.stringify({ to: prop.ownerSeat, amount: rent, tile: tile.index, landmark: prop.landmark, houses: prop.houses }) });
-          charge(s, seat, rent, `ค่าเช่า ${tile.name} ให้ ${s.players[prop.ownerSeat].name}`, prop.ownerSeat);
+          if (s.rules.maxDebt > 0) {
+            g.phase = "rent";
+            g.pending = { kind: "rent", tileIndex: tile.index, amount: rent, toSeat: prop.ownerSeat };
+            log(s, "rent_due", `${p.name} ต้องจ่ายค่าเช่า ${tile.name} ${fmt(rent)} บาท ให้ ${s.players[prop.ownerSeat].name}`, seat);
+          } else {
+            settleRent(s, seat, tile.index, rent, prop.ownerSeat, "cash");
+          }
         }
       }
       return;
@@ -433,8 +441,8 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
     return startTurnFor(s, (seat + 1) % s.players.length, depth + 1);
   }
   if (p.cash < 0) {
-    g.phase = "debt";
-    g.pending = { kind: "debt", amount: -p.cash };
+    g.phase = "broke";
+    g.pending = { kind: "broke", amount: -p.cash };
     return;
   }
   if (p.inJail) {
@@ -462,6 +470,7 @@ export function startGame(s: Snapshot) {
     p.jailTurns = 0;
     p.skipTurns = 0;
     p.bankrupt = false;
+    p.debt = 0;
   }
   s.props = {};
   log(s, "start", `เริ่มเกม! แต่ละคนได้เงิน ${fmt(s.rules.startingMoney)} บาท`);
@@ -530,6 +539,63 @@ export function roll(s: Snapshot, seat: number) {
   }
   moveBy(s, seat, a + b);
   land(s, seat);
+}
+
+/** Pays rent in cash, or (mode "tab") nets it against the tab between the two players. */
+function settleRent(s: Snapshot, seat: number, tileIndex: number, amount: number, toSeat: number, mode: "cash" | "tab") {
+  const tile = tileAt(s, tileIndex);
+  const prop = s.props[tileIndex];
+  const p = s.players[seat];
+  const owner = s.players[toSeat];
+  let offset = 0;
+  let tabbed = 0;
+  let cash = amount;
+  if (mode === "tab") {
+    // 1. the owner may already owe me: cancel that first
+    offset = Math.min(amount, owner.debt);
+    owner.debt -= offset;
+    cash -= offset;
+    // 2. put as much of the rest as the cap allows on my tab
+    const room = Math.max(0, s.rules.maxDebt - p.debt);
+    tabbed = Math.min(cash, room);
+    p.debt += tabbed;
+    cash -= tabbed;
+    if (offset > 0) log(s, "offset", `${p.name} หักหนี้ที่ ${owner.name} ติดไว้ ${fmt(offset)} บาท`, seat);
+    if (tabbed > 0) log(s, "tab", `${p.name} ติดค่าเช่า ${tile.name} ไว้ก่อน ${fmt(tabbed)} บาท (รวมติด ${fmt(p.debt)})`, seat);
+  }
+  s.events.push({
+    seat,
+    kind: "rent",
+    text: JSON.stringify({ to: toSeat, amount, tile: tileIndex, landmark: prop?.landmark ?? false, houses: prop?.houses ?? 0, cash, offset, tabbed }),
+  });
+  if (cash > 0) charge(s, seat, cash, `ค่าเช่า ${tile.name} ให้ ${owner.name}`, toSeat);
+}
+
+export function payRent(s: Snapshot, seat: number, mode: "cash" | "tab") {
+  requireTurn(s, seat, "rent");
+  const g = s.game;
+  if (g.pending?.kind !== "rent") throw new GameError("ไม่มีค่าเช่าค้างจ่าย");
+  const { tileIndex, amount, toSeat } = g.pending;
+  const p = s.players[seat];
+  if (mode === "cash" && p.cash < amount) throw new GameError("เงินสดไม่พอ เลือกติดไว้ก่อนได้");
+  g.pending = undefined;
+  g.phase = "end";
+  settleRent(s, seat, tileIndex, amount, toSeat, mode);
+}
+
+/** Repay (part of) the tab from cash. Allowed any time during the game. */
+export function payDebt(s: Snapshot, seat: number, amount?: number) {
+  if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
+  begin(s);
+  const p = s.players[seat];
+  const creditor = s.players.find((o) => o.seat !== seat && !o.bankrupt);
+  if (p.debt <= 0 || !creditor) throw new GameError("ไม่มีหนี้ค้าง");
+  const amt = Math.min(amount ?? p.debt, p.debt, p.cash);
+  if (amt <= 0) throw new GameError("เงินสดไม่พอ");
+  p.cash -= amt;
+  p.debt -= amt;
+  creditor.cash += amt;
+  log(s, "repay", `${p.name} ชำระหนี้ให้ ${creditor.name} ${fmt(amt)} บาท${p.debt > 0 ? ` (เหลือ ${fmt(p.debt)})` : " หมดหนี้แล้ว"}`, seat);
 }
 
 export function buy(s: Snapshot, seat: number, withHouse = false) {
@@ -620,15 +686,15 @@ export function build(s: Snapshot, seat: number, tileIndex: number) {
 
 function afterSale(s: Snapshot, seat: number) {
   const p = s.players[seat];
-  if (s.game.phase === "debt" && p.cash >= 0) {
-    log(s, "debt", `${p.name} ชำระหนี้ครบแล้ว`, seat);
+  if (s.game.phase === "broke" && p.cash >= 0) {
+    log(s, "broke", `${p.name} หาเงินมาจ่ายครบแล้ว`, seat);
     s.game.pending = undefined;
     s.game.phase = "end";
   }
 }
 
 export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "debt", "world_tour");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour");
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];
@@ -651,7 +717,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
 }
 
 export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "debt", "world_tour");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour");
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];

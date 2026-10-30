@@ -2,7 +2,7 @@
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import { DimsamToken } from "~/art/Dimsam";
 import type { GameView } from "~/lib/game";
-import { wealth } from "~/lib/game";
+import { tabPreview, wealth } from "~/lib/game";
 import { baht, cx, GROUP_COLORS } from "~/lib/format";
 import type { Actions } from "./ActionPanel";
 
@@ -98,7 +98,49 @@ export function Decision({ view, disabled, actions }: { view: GameView; disabled
         </Card>
       );
     }
-    case "debt": {
+    case "rent": {
+      const pend = g.pending as { tileIndex: number; amount: number; toSeat: number };
+      const tile = view.tiles.find((t) => t.index === pend.tileIndex)!;
+      const owner = view.players[pend.toSeat];
+      const prop = view.props.find((p) => p.tileIndex === tile.index);
+      const Art = TILE_ART[tile.index] ?? ART_BY_TYPE[tile.type];
+      const band = tile.group ? GROUP_COLORS[tile.group] : tile.type === "station" ? "#c9c0b3" : "#e0a458";
+      const what = prop?.landmark ? "แลนด์มาร์ก ★" : prop && prop.houses > 0 ? `บ้าน ${prop.houses} หลัง` : tile.type === "station" ? "ร้าน" : tile.type === "special_item" ? "ของเล่น" : "ที่ดินเปล่า";
+      const tp = tabPreview(view, view.me, pend.amount);
+      const canCash = me.cash >= pend.amount;
+      const tabUseful = tp.offset > 0 || tp.tabbed > 0;
+      const parts: string[] = [];
+      if (tp.offset > 0) parts.push(`หักหนี้ที่ ${owner.name} ติดคุณ ${baht(tp.offset)}`);
+      if (tp.tabbed > 0) parts.push(`ติดเพิ่ม ${baht(tp.tabbed)}`);
+      if (tp.cash > 0) parts.push(`จ่ายสด ${baht(tp.cash)}${tp.cash > me.cash ? " (เงินไม่พอ ต้องขายทรัพย์สิน)" : ""}`);
+      return (
+        <Card band={band} title={`ค่าเช่า ${tile.name}`}>
+          <div className="flex gap-3 items-center">
+            <div className="w-16 h-16 rounded-xl overflow-hidden border border-cocoa/20 bg-white shrink-0">{Art && <Art animate />}</div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-sm text-cocoa/70">
+                ของ <b className="text-cocoa">{owner.name}</b> · {what}
+              </div>
+              <div className="font-bold text-berry text-3xl tabular-nums">{baht(pend.amount)}</div>
+              <div className="text-xs text-cocoa/60">คุณมีเงินสด {baht(me.cash)}</div>
+            </div>
+          </div>
+          {(me.debt > 0 || owner.debt > 0) && (
+            <Small>
+              {me.debt > 0 && <>คุณติด {owner.name} อยู่ {baht(me.debt)} (ติดได้อีก {baht(Math.max(0, r.maxDebt - me.debt))})</>}
+              {owner.debt > 0 && <>{owner.name} ติดคุณอยู่ {baht(owner.debt)}</>}
+            </Small>
+          )}
+          <div className="flex flex-col gap-2 pt-1">
+            <Btn tone="primary" disabled={disabled || !canCash} onClick={() => actions.payRent("cash")} label="จ่ายเงินสด" amount={baht(pend.amount)} />
+            <Btn tone="tab" disabled={disabled || !tabUseful} onClick={() => actions.payRent("tab")} label="ติดไว้ก่อน" amount={tp.tabbed > 0 ? `ติด ${baht(tp.tabbed)}` : undefined} />
+          </div>
+          {tabUseful && <p className="text-xs text-cocoa/60 text-center">{parts.join(" · ")}</p>}
+          {!tabUseful && me.debt >= r.maxDebt && <p className="text-xs text-berry text-center">ติดครบ {baht(r.maxDebt)} แล้ว ต้องจ่ายสด</p>}
+        </Card>
+      );
+    }
+    case "broke": {
       const w = wealth(view, view.me);
       return (
         <Card band="#d9487e" title={`เงินไม่พอ ติดลบ ${baht(-me.cash)}`}>
@@ -131,7 +173,7 @@ function Small({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-cocoa/75 leading-snug">{children}</p>;
 }
 
-function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "green" | "ghost" | "danger"; disabled: boolean; onClick: () => void; label: string; amount?: string }) {
+function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "green" | "ghost" | "danger" | "tab"; disabled: boolean; onClick: () => void; label: string; amount?: string }) {
   return (
     <button
       disabled={disabled}
@@ -142,6 +184,7 @@ function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "gr
         tone === "green" && "bg-[#5cb85c] text-white shadow-[0_4px_0_#3f8f3f]",
         tone === "ghost" && "bg-white text-cocoa border-2 border-cocoa/20 shadow-[0_3px_0_rgba(107,74,43,0.2)]",
         tone === "danger" && "bg-berry text-white shadow-[0_4px_0_#a22d5a]",
+        tone === "tab" && "bg-[#f08a2b] text-white shadow-[0_4px_0_#b8621a]",
       )}
     >
       <span>{label}</span>

@@ -23,8 +23,8 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
       actionAt: 0,
     },
     players: [
-      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false },
-      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false },
+      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false, debt: 0 },
+      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, skipTurns: 0, bankrupt: false, debt: 0 },
     ],
     props: {},
     events: [],
@@ -38,6 +38,11 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
   };
   E.startGame(s);
   return s;
+}
+
+/** If the last landing asked how to pay rent, pay it in cash. */
+function settle(s: E.Snapshot) {
+  if (s.game.phase === "rent") E.payRent(s, s.game.turn, "cash");
 }
 
 describe("start", () => {
@@ -85,6 +90,8 @@ describe("rent", () => {
     E.buy(s, 0);
     E.endTurn(s, 0);
     E.roll(s, 1); // B lands on tile 3 too
+    expect(s.game.phase).toBe("rent");
+    settle(s);
     expect(s.players[1].cash).toBe(30000 - 40);
     expect(s.players[0].cash).toBe(30000 - 800 + 40);
     expect(s.game.phase).toBe("end");
@@ -96,6 +103,7 @@ describe("rent", () => {
     s.props[3] = { ownerSeat: 0, houses: 0, landmark: false };
     s.game.turn = 1;
     E.roll(s, 1);
+    settle(s);
     expect(s.players[1].cash).toBe(30000 - 80);
   });
 
@@ -257,6 +265,7 @@ describe("cards", () => {
     s.props[39] = { ownerSeat: 1, houses: 0, landmark: false };
     E.roll(s, 0);
     expect(s.players[0].position).toBe(39);
+    settle(s);
     expect(s.players[0].cash).toBe(30000 - 1000);
   });
 
@@ -367,6 +376,7 @@ describe("building", () => {
     expect(() => E.build(s, 0, 3)).toThrow(/ตานี้สร้างได้/);
     E.endTurn(s, 0);
     E.roll(s, 1); // B lands on A's tile 3 and pays rent
+    settle(s);
     E.endTurn(s, 1);
     E.roll(s, 0); // 7 → tile 10, not own land
     expect(() => E.build(s, 0, 3)).toThrow(/ช่องที่ยืนอยู่/);
@@ -430,9 +440,10 @@ describe("building", () => {
   });
 });
 
-describe("debt and bankruptcy", () => {
-  test("rent you cannot pay puts you in debt until you sell enough", () => {
+describe("broke and bankruptcy", () => {
+  test("rent you cannot pay puts you in the broke phase until you sell enough", () => {
     const s = makeSnap([1, 2]);
+    s.rules.maxDebt = 0;
     s.players[0].cash = 100;
     s.props[3] = { ownerSeat: 1, houses: 0, landmark: true }; // rent 4500
     s.props[6] = { ownerSeat: 0, houses: 0, landmark: false }; // sellBack 500
@@ -443,13 +454,13 @@ describe("debt and bankruptcy", () => {
     s.props[21] = { ownerSeat: 0, houses: 0, landmark: false }; // 1100
     s.props[24] = { ownerSeat: 0, houses: 0, landmark: false }; // 1200
     E.roll(s, 0);
-    expect(s.game.phase).toBe("debt");
+    expect(s.game.phase).toBe("broke");
     expect(s.game.status).toBe("playing");
     E.sellLand(s, 0, 21);
     E.sellLand(s, 0, 24);
     E.sellLand(s, 0, 12);
     E.sellLand(s, 0, 15);
-    expect(s.game.phase).toBe("debt");
+    expect(s.game.phase).toBe("broke");
     E.sellLand(s, 0, 9);
     expect(s.game.phase).toBe("end");
     expect(s.players[0].cash).toBeGreaterThanOrEqual(0);
@@ -457,6 +468,7 @@ describe("debt and bankruptcy", () => {
 
   test("owing more than everything you own ends the game", () => {
     const s = makeSnap([1, 2]);
+    s.rules.maxDebt = 0;
     s.players[0].cash = 100;
     s.props[3] = { ownerSeat: 1, houses: 0, landmark: true };
     E.roll(s, 0);
@@ -485,5 +497,95 @@ describe("world tour (ไปเดินเล่น)", () => {
     s.players[0].position = 10;
     E.roll(s, 0);
     expect(s.game.phase).toBe("end");
+  });
+});
+
+describe("tab between players (ติดไว้ก่อน)", () => {
+  function landOnRent(cash = 30000) {
+    const s = makeSnap([1, 2]); // A → tile 3 owned by B
+    s.props[3] = { ownerSeat: 1, houses: 0, landmark: true }; // rent 4500
+    s.players[0].cash = cash;
+    E.roll(s, 0);
+    expect(s.game.phase).toBe("rent");
+    expect(s.game.pending).toEqual({ kind: "rent", tileIndex: 3, amount: 4500, toSeat: 1 });
+    return s;
+  }
+
+  test("pay in cash", () => {
+    const s = landOnRent();
+    E.payRent(s, 0, "cash");
+    expect(s.players[0].cash).toBe(25500);
+    expect(s.players[1].cash).toBe(34500);
+    expect(s.players[0].debt).toBe(0);
+    expect(s.game.phase).toBe("end");
+  });
+
+  test("put it on the tab even when you could afford it", () => {
+    const s = landOnRent();
+    E.payRent(s, 0, "tab");
+    expect(s.players[0].cash).toBe(30000);
+    expect(s.players[1].cash).toBe(30000);
+    expect(s.players[0].debt).toBe(4500);
+    expect(s.game.phase).toBe("end");
+  });
+
+  test("cash is refused when short, tab still works", () => {
+    const s = landOnRent(100);
+    expect(() => E.payRent(s, 0, "cash")).toThrow(/เงินสดไม่พอ/);
+    E.payRent(s, 0, "tab");
+    expect(s.players[0].debt).toBe(4500);
+    expect(s.players[0].cash).toBe(100);
+  });
+
+  test("the tab is capped; the rest must come from cash, or you go broke", () => {
+    const s = landOnRent(100);
+    s.players[0].debt = 18000; // room 2000
+    E.payRent(s, 0, "tab");
+    expect(s.players[0].debt).toBe(20000);
+    expect(s.players[0].cash).toBe(100 - 2500);
+    expect(s.game.phase).toBe("broke");
+  });
+
+  test("when the creditor lands on the debtor's land, rent cancels the debt first", () => {
+    const s = makeSnap([1, 2]); // B will land on tile 3
+    s.props[3] = { ownerSeat: 0, houses: 0, landmark: true }; // A owns, rent 4500
+    s.players[1].debt = 0;
+    s.players[0].debt = 3000; // A owes B 3000
+    s.game.turn = 1;
+    E.roll(s, 1);
+    E.payRent(s, 1, "tab");
+    expect(s.players[0].debt).toBe(0); // A's debt wiped by 3000 of the rent
+    expect(s.players[1].debt).toBe(1500); // remaining 1500 goes on B's tab
+    expect(s.players[1].cash).toBe(30000);
+  });
+
+  test("repaying the tab moves cash to the creditor", () => {
+    const s = makeSnap();
+    s.players[0].debt = 5000;
+    E.payDebt(s, 0, 2000);
+    expect(s.players[0].debt).toBe(3000);
+    expect(s.players[0].cash).toBe(28000);
+    expect(s.players[1].cash).toBe(32000);
+    E.payDebt(s, 0);
+    expect(s.players[0].debt).toBe(0);
+    expect(s.players[1].cash).toBe(35000);
+    expect(() => E.payDebt(s, 0)).toThrow(/ไม่มีหนี้/);
+  });
+
+  test("maxDebt 0 charges rent immediately like classic rules", () => {
+    const s = makeSnap([1, 2]);
+    s.rules.maxDebt = 0;
+    s.props[3] = { ownerSeat: 1, houses: 0, landmark: false };
+    E.roll(s, 0);
+    expect(s.game.phase).toBe("end");
+    expect(s.players[0].cash).toBe(30000 - 40);
+  });
+
+  test("bank payments (tax) never go on the tab", () => {
+    const s = makeSnap([2, 2]); // → tile 4 tax 1000
+    s.players[0].cash = 500;
+    E.roll(s, 0);
+    expect(s.game.phase).toBe("broke");
+    expect(s.players[0].debt).toBe(0);
   });
 });

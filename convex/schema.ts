@@ -79,23 +79,26 @@ export const rulesFields = {
   houseSellBackRatio: v.number(),
   landSellBackRatio: v.optional(v.number()),
   cardMovesCollectStart: v.boolean(),
+  maxDebt: v.optional(v.number()),
 };
 
 export const phase = v.union(
   v.literal("roll"), // current player must roll
   v.literal("jail"), // current player is in the tub: roll for doubles or pay
   v.literal("buy"), // landed on an unowned property
+  v.literal("rent"), // landed on the other player's property: pay cash or put it on the tab
   v.literal("card_roll"), // a card asks for a dice roll
   v.literal("world_tour"), // pick one of your own tiles to visit
-  v.literal("debt"), // cash < 0, must sell or give up
+  v.literal("broke"), // cash < 0, must sell or give up
   v.literal("end"), // may build/sell, then end turn
 );
 
 export const pending = v.union(
   v.object({ kind: v.literal("buy"), tileIndex: v.number() }),
   v.object({ kind: v.literal("card_roll"), effect: cardEffect, text: v.string() }),
+  v.object({ kind: v.literal("rent"), tileIndex: v.number(), amount: v.number(), toSeat: v.number() }),
   v.object({ kind: v.literal("world_tour") }),
-  v.object({ kind: v.literal("debt"), amount: v.number(), toSeat: v.optional(v.number()) }),
+  v.object({ kind: v.literal("broke"), amount: v.number(), toSeat: v.optional(v.number()) }),
 );
 
 export default defineSchema({
@@ -143,6 +146,8 @@ export default defineSchema({
     jailTurns: v.number(),
     skipTurns: v.number(),
     bankrupt: v.boolean(),
+    /** rent owed to the other player ("ติดไว้ก่อน") */
+    debt: v.optional(v.number()),
     bot: v.optional(v.boolean()),
     lastSeen: v.number(),
   })

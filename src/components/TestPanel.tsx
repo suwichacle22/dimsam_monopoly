@@ -27,7 +27,7 @@ export function TestPanel({
       {label}
     </button>
   );
-  const sfx: Sfx[] = ["roll", "step", "buy", "cash", "pay", "card", "build", "jail", "win", "lose", "prize", "penalty"];
+  const sfx: Sfx[] = ["roll", "step", "buy", "cash", "pay", "card", "build", "jail", "win", "lose", "prize", "penalty", "tab"];
   return (
     <div className="card p-3 flex flex-col gap-2 border-dashed">
       <button className="text-left text-sm font-semibold text-cocoa flex justify-between" onClick={() => setOpen(!open)}>
@@ -49,6 +49,7 @@ export function TestPanel({
             <B label="💰 ได้รางวัล +5,000" onClick={() => { play("prize"); onBurst({ id: Date.now(), amount: 5000, label: `${me.name} ได้รางวัล!`, kicker: "หีบขนม", variant: me.variant }); }} />
             <B label="💸 โดนปรับ −2,000" onClick={() => { play("penalty"); onBurst({ id: Date.now(), amount: -2000, label: `${me.name} โดนปรับ`, kicker: "ถุงของเล่น", variant: me.variant }); }} />
             <B label="🏠 ได้ค่าเช่า" onClick={() => { play("prize"); onBurst({ id: Date.now(), amount: 1500, label: `${other.name} มาจ่ายค่าเช่า`, kicker: "ค่าเช่า ขั้วโลกเหนือ", detail: "บ้าน 2 หลัง", variant: me.variant }); }} />
+            <B label="📝 ติดไว้ก่อน" onClick={() => { play("tab"); onBurst({ id: Date.now(), amount: 4500, tone: "tab", label: `ติด ${other.name} ไว้ก่อน`, kicker: "ค่าเช่า ทะเลทราย", detail: "ที่ดิน · ติดไว้ 4,500", variant: me.variant }); }} />
             <B label="★ จ่ายค่าแลนด์มาร์ก" onClick={() => { play("penalty"); onBurst({ id: Date.now(), amount: -7500, label: `จ่ายค่าเช่าให้ ${other.name}`, kicker: "ค่าเช่า ขั้วโลกเหนือ", detail: "แลนด์มาร์ก ★ · ค่าเช่าสูงสุด!", variant: me.variant }); }} />
           </div>
           <div className="flex flex-wrap gap-1">

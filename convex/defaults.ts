@@ -198,6 +198,8 @@ export type Rules = {
   landSellBackRatio: number;
   /** when passing start during a card move, pay the bonus */
   cardMovesCollectStart: boolean;
+  /** max rent a player may owe the other player ("ติดไว้ก่อน"); 0 = no tab, rent is always cash */
+  maxDebt: number;
 };
 
 export const DEFAULT_RULES: Rules = {
@@ -218,6 +220,7 @@ export const DEFAULT_RULES: Rules = {
   houseSellBackRatio: 0.5,
   landSellBackRatio: 0.5,
   cardMovesCollectStart: true,
+  maxDebt: 20000,
 };
 
 export const RULE_LABELS: Record<keyof Rules, string> = {
@@ -238,4 +241,5 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   houseSellBackRatio: "ขายบ้านคืนได้กี่เท่าของราคาบ้าน (0.5 = 50%)",
   landSellBackRatio: "ขายที่ดินคืนได้กี่เท่าของราคาซื้อ (0.5 = 50%)",
   cardMovesCollectStart: "เดินด้วยการ์ดแล้วผ่านบ้านได้ค่าขนม",
+  maxDebt: "ติดค่าเช่าอีกฝ่ายได้สูงสุด (0 = ปิด ต้องจ่ายสดเสมอ)",
 };

@@ -17,7 +17,7 @@ function useCashFloat(cash: number) {
   return float;
 }
 
-function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile: (i: number) => void }) {
+function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerView; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
   const float = useCashFloat(p.cash);
   const isTurn = view.game.turn === p.seat && view.game.status === "playing";
   const owned = view.props.filter((x) => x.ownerSeat === p.seat).map((x) => view.tiles.find((t) => t.index === x.tileIndex)!);
@@ -60,10 +60,31 @@ function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile
         <span title={`ขายคืนธนาคารได้ ${Math.round(view.rules.landSellBackRatio * 100)}% ของราคาซื้อ`}>
           ขายคืนได้ <b className="text-cocoa">{baht(w.sellable)}</b>
         </span>
-        <span title="เงินสด + ทรัพย์สิน" className="ml-auto">
-          รวม <b className="text-cocoa">{baht(p.cash + w.assets)}</b>
+        <span title="เงินสด + ทรัพย์สิน − หนี้" className="ml-auto">
+          รวม <b className="text-cocoa">{baht(p.cash + w.assets - p.debt)}</b>
         </span>
       </div>
+      {p.debt > 0 && (
+        <div className="flex items-center gap-2 text-[12px] bg-[#fff1e6] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
+          <span className="text-[#b8621a]">
+            ติดหนี้ <b>{view.players.find((o) => o.seat !== p.seat)?.name}</b> <b className="tabular-nums">{baht(p.debt)}</b>
+          </span>
+          {p.seat === view.me && onPayDebt && (
+            <span className="ml-auto flex gap-1">
+              <button className="btn-secondary text-[11px] px-2 py-[2px]" disabled={p.cash <= 0} onClick={() => {
+                const v = prompt(`ชำระเท่าไหร่? (ติดอยู่ ${baht(p.debt)} · เงินสด ${baht(p.cash)})`, String(Math.min(p.debt, p.cash)));
+                const n = Number((v ?? "").replace(/[^\d]/g, ""));
+                if (n > 0) onPayDebt(n);
+              }}>
+                ชำระบางส่วน
+              </button>
+              <button className="btn-secondary text-[11px] px-2 py-[2px]" disabled={p.cash <= 0} onClick={() => onPayDebt()}>
+                ชำระทั้งหมด
+              </button>
+            </span>
+          )}
+        </div>
+      )}
       {owned.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {owned.map((t) => {
@@ -94,11 +115,11 @@ function PlayerCard({ view, p, onTile }: { view: GameView; p: PlayerView; onTile
   );
 }
 
-export function PlayerPanel({ view, onTile }: { view: GameView; onTile: (i: number) => void }) {
+export function PlayerPanel({ view, onTile, onPayDebt }: { view: GameView; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
       {view.players.map((p) => (
-        <PlayerCard key={p.seat} view={view} p={p} onTile={onTile} />
+        <PlayerCard key={p.seat} view={view} p={p} onTile={onTile} onPayDebt={onPayDebt} />
       ))}
     </div>
   );

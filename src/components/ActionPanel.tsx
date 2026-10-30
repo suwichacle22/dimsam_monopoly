@@ -5,6 +5,8 @@ import { buildBlocker, buildCost, wealth } from "~/lib/game";
 export type Actions = {
   roll: () => void;
   buy: (withHouse?: boolean) => void;
+  payRent: (mode: "cash" | "tab") => void;
+  payDebt: (amount?: number) => void;
   build: (tileIndex: number) => void;
   skipBuy: () => void;
   payJail: () => void;
@@ -39,9 +41,10 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
           {g.phase === "roll" && "ทอยลูกเต๋า"}
           {g.phase === "jail" && "ทอยหาเบิ้ลในอ่างอาบน้ำ"}
           {g.phase === "buy" && "ตัดสินใจซื้อที่ดิน"}
+          {g.phase === "rent" && "เลือกวิธีจ่ายค่าเช่า"}
           {g.phase === "card_roll" && "ทอยลูกเต๋าตามการ์ด"}
           {g.phase === "world_tour" && "เลือกที่จะไปเดินเล่น"}
-          {g.phase === "debt" && "หาเงินมาจ่าย"}
+          {g.phase === "broke" && "หาเงินมาจ่าย"}
           {g.phase === "end" && "จบตา"}
           …
         </p>
@@ -50,11 +53,12 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
     );
   }
 
-  if (["buy", "jail", "card_roll", "world_tour"].includes(g.phase)) {
+  if (["buy", "rent", "jail", "card_roll", "world_tour"].includes(g.phase)) {
     return (
       <Panel tone="muted">
         <p className="text-cocoa/70">
           {g.phase === "buy" && "เลือกซื้อหรือไม่ซื้อได้ในหน้าต่างที่เด้งขึ้นมา"}
+          {g.phase === "rent" && "เลือกจ่ายค่าเช่าสดหรือติดไว้ก่อนได้ในหน้าต่างที่เด้งขึ้นมา"}
           {g.phase === "jail" && "ทอยหาเบิ้ลหรือจ่ายค่าไถ่ได้ในหน้าต่างที่เด้งขึ้นมา"}
           {g.phase === "card_roll" && "ทอยลูกเต๋าตามการ์ดได้ในหน้าต่างที่เด้งขึ้นมา"}
           {g.phase === "world_tour" && "เลือกที่จะไปเดินเล่นได้ในหน้าต่างที่เด้งขึ้นมา"}
@@ -147,7 +151,7 @@ export function ActionPanel({ view, busy, pendingAction, actions }: { view: Game
         </Panel>
       );
     }
-    case "debt": {
+    case "broke": {
       const w = wealth(view, view.me);
       return (
         <Panel tone="danger">
