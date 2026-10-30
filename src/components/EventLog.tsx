@@ -4,6 +4,7 @@ import { cx } from "~/lib/format";
 
 const ICON: Record<string, string> = {
   roll: "🎲",
+  again: "🔁",
   land: "🐾",
   buy: "🏷️",
   money: "💰",

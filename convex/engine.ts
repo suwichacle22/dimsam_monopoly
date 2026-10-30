@@ -779,7 +779,7 @@ export function endTurn(s: Snapshot, seat: number) {
     g.lastRollDouble = false;
     g.pending = undefined;
     g.phase = "roll";
-    log(s, "roll", `${p.name} ทอยเบิ้ล ได้ทอยอีกครั้ง`, seat);
+    log(s, "again", `${p.name} ทอยเบิ้ล ได้ทอยอีกครั้ง`, seat);
     return;
   }
   startTurnFor(s, (seat + 1) % s.players.length);

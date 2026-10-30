@@ -144,6 +144,10 @@ describe("doubles", () => {
     E.endTurn(s, 0);
     expect(s.game.turn).toBe(0);
     expect(s.game.phase).toBe("roll");
+    // the "roll again" notice must not look like a dice throw, or the client replays the roll animation
+    const last = s.events[s.events.length - 1];
+    expect(last.text).toContain("ได้ทอยอีกครั้ง");
+    expect(last.kind).toBe("again");
   });
 
   test("third double in a row sends you to the bath tub", () => {
