@@ -429,7 +429,8 @@ function Game({ token }: { token: string }) {
     worldTour: (tileIndex?: number) => run(() => m.worldTour({ token, tileIndex })),
     endTurn: () => run(() => m.endTurn({ token })),
     giveUp: () => {
-      if (confirm("ยอมแพ้จริงๆ นะ?")) run(() => m.giveUp({ token }));
+      const other = view.players.find((p) => p.seat !== view.me);
+      if (confirm(`ยอมแพ้จริงๆ นะ? ${other ? `${other.name} จะชนะทันที` : "เกมจะจบทันที"}`)) run(() => m.giveUp({ token }));
     },
     openTile: (i: number) => setSheet(view.tiles.find((t) => t.index === i) ?? null),
   };
@@ -499,6 +500,16 @@ function Game({ token }: { token: string }) {
             {muted ? "🔇" : "🔊"}<span className="hidden sm:inline">{muted ? " ปิดเสียงอยู่" : " เสียงเปิด"}</span>
           </button>
           <ThemeToggle compact />
+          {view.game.status === "playing" && me && !me.bankrupt && (
+            <button
+              className="px-2 py-1 rounded-lg border border-berry/40 text-berry"
+              title="ยอมแพ้ (อีกฝ่ายชนะทันที)"
+              disabled={pendingAction}
+              onClick={actions.giveUp}
+            >
+              🏳️<span className="hidden sm:inline"> ยอมแพ้</span>
+            </button>
+          )}
           <button
             onClick={() => {
               if (confirm("ออกจากห้องบนเครื่องนี้? (เกมยังอยู่ กลับเข้ามาใหม่ได้ด้วยรหัสห้อง)")) {
