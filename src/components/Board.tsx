@@ -36,6 +36,8 @@ export function Board({
   dice,
   rolling,
   animate,
+  resultHidden = false,
+  stepsFrom,
   overlay,
   tilt = 0,
   fx = [],
@@ -50,6 +52,10 @@ export function Board({
   dice: number[];
   rolling: boolean;
   animate: boolean;
+  /** the latest action is still playing out: don't mark the tile it ends on yet */
+  resultHidden?: boolean;
+  /** tile the step numbers count from; undefined hides them */
+  stepsFrom?: number;
   /** replaces the mascot with a decision card (buy, jail, …) */
   overlay?: React.ReactNode;
   /** 3D tilt of the board in degrees (0 = flat) */
@@ -87,7 +93,8 @@ export function Board({
               prop={prop}
               owner={owner}
               animate={animate}
-              highlight={view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
+              highlight={!resultHidden && view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
+              steps={stepsFrom === undefined ? undefined : (tile.index - stepsFrom + view.tiles.length) % view.tiles.length}
               fx={fx.find((f) => f.index === tile.index)}
               onClick={() => onTileClick(tile)}
             />

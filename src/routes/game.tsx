@@ -93,8 +93,11 @@ function Game({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const lastActionRef = useRef<number | null>(null);
+  // the action whose result may be shown: the server answers while the dice are still tumbling
+  const [revealedAt, setRevealedAt] = useState<number | null>(null);
   const [muted, setMutedState] = useState(false);
   const [tilt3d, setTilt3d] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
   const [fx, setFx] = useState<TileFx[]>([]);
   const [callout, setCallout] = useState<Callout | null>(null);
   const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,6 +126,7 @@ function Game({ token }: { token: string }) {
   useEffect(() => {
     setTilt3d(localStorage.getItem("dimsam.3d") !== "0" && window.matchMedia("(prefers-reduced-motion: no-preference)").matches);
     setMutedState(isMuted());
+    setShowSteps(localStorage.getItem("dimsam.steps") === "1");
     const unlock = () => unlockAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     return () => window.removeEventListener("pointerdown", unlock);
@@ -147,6 +151,7 @@ function Game({ token }: { token: string }) {
       lastActionRef.current = actionAt;
       setDisplayPos(v.players.map((p) => p.position));
       setDiceShown(v.game.dice);
+      setRevealedAt(actionAt);
       return;
     }
     if (lastActionRef.current === actionAt) return;
@@ -223,6 +228,7 @@ function Game({ token }: { token: string }) {
       }
       setDisplayPos(finalPos);
       setWalking(false);
+      setRevealedAt(actionAt);
       for (const seat of [...passed]) passStartBonus(seat); // safety: a pass we did not see while stepping
       // card prize / penalty burst (both phones see it, from the card-drawer's point of view)
       const cardMoney = fresh.filter((e) => e.kind === "card_money");
@@ -465,6 +471,7 @@ function Game({ token }: { token: string }) {
 
   const decisionPhase = ["buy", "rent", "jail", "card_roll", "world_tour"].includes(view.game.phase);
   const showDecision = myTurn && !busy && decisionPhase && !sheet;
+  const resultHidden = revealedAt !== view.game.actionAt;
 
   return (
     <main className="game-main min-h-dvh p-2 sm:p-4 flex flex-col lg:flex-row gap-3 max-w-[1400px] mx-auto">
@@ -477,6 +484,8 @@ function Game({ token }: { token: string }) {
           dice={diceShown}
           rolling={rolling}
           animate
+          resultHidden={resultHidden}
+          stepsFrom={showSteps ? displayPos[view.me] ?? me?.position : undefined}
           tilt={tilt3d ? 14 : 0}
           fx={fx}
           callout={callout}
@@ -501,7 +510,7 @@ function Game({ token }: { token: string }) {
             onRoll={() => { play("roll"); setRolling(true); setTimeout(() => { setDiceShown([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]); setRolling(false); }, 1000); }}
           />
         )}
-        <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
+        <EventLog view={view} resultHidden={resultHidden} className="h-48 lg:flex-1 lg:min-h-0" />
         <div className="flex flex-wrap justify-center sm:justify-end items-center gap-x-1 gap-y-1.5 text-xs text-cocoa/50 px-1 whitespace-nowrap">
           <Link to="/settings">ตั้งค่า</Link>
           <button className="px-2 py-1 rounded-lg border border-cocoa/20" onClick={() => setDeckSheet("treasure")} title="ดูการ์ด">
@@ -516,6 +525,17 @@ function Game({ token }: { token: string }) {
             }}
           >
             {tilt3d ? "🎲" : "▭"}<span className="hidden sm:inline">{tilt3d ? " มุมมอง 3D" : " มุมมองแบน"}</span>
+          </button>
+          <button
+            className="px-2 py-1 rounded-lg border border-cocoa/20"
+            title="แสดงจำนวนช่องที่ต้องเดินจากตัวคุณบนทุกช่อง"
+            onClick={() => {
+              const next = !showSteps;
+              setShowSteps(next);
+              localStorage.setItem("dimsam.steps", next ? "1" : "0");
+            }}
+          >
+            🔢<span className="hidden sm:inline">{showSteps ? " นับช่องเปิด" : " นับช่องปิด"}</span>
           </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"

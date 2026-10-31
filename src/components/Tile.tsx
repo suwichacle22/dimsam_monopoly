@@ -12,6 +12,7 @@ export const Tile = memo(function Tile({
   prop,
   owner,
   highlight,
+  steps,
   animate,
   fx,
   onClick,
@@ -20,6 +21,8 @@ export const Tile = memo(function Tile({
   prop?: PropView;
   owner?: PlayerView;
   highlight?: boolean;
+  /** steps forward from the player's piece (0 = standing here) */
+  steps?: number;
   animate: boolean;
   fx?: TileFx;
   onClick: () => void;
@@ -89,6 +92,16 @@ export const Tile = memo(function Tile({
           </div>
         )}
       </div>
+      {!!steps && (
+        <span
+          className={cx(
+            "absolute left-[1px] top-[1px] min-w-[1.5em] rounded-md px-[2px] text-center text-[clamp(8px,1.4vw,12px)] font-bold leading-[1.4] tabular-nums pointer-events-none",
+            steps >= 2 && steps <= 12 ? "bg-cocoa text-paper" : "bg-paper/80 text-cocoa/60",
+          )}
+        >
+          {steps}
+        </span>
+      )}
       {owner && (
         <span
           style={{ background: ownerColor }}

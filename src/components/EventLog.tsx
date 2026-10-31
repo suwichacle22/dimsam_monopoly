@@ -25,14 +25,15 @@ const ICON: Record<string, string> = {
   move: "🐾",
 };
 
-export function EventLog({ view, className }: { view: GameView; className?: string }) {
+export function EventLog({ view, resultHidden, className }: { view: GameView; resultHidden?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const shown = view.events.filter((e) => e.kind !== "card_money" && e.kind !== "rent" && e.kind !== "pass_start" && e.kind !== "tax" && e.kind !== "sale" && !(resultHidden && e.at === view.game.actionAt));
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: "smooth" });
-  }, [view.events.length]);
+  }, [shown.length]);
   return (
     <div ref={ref} className={cx("card p-3 overflow-y-auto text-sm flex flex-col gap-1", className)}>
-      {view.events.filter((e) => e.kind !== "card_money" && e.kind !== "rent" && e.kind !== "pass_start" && e.kind !== "tax" && e.kind !== "sale").map((e) => (
+      {shown.map((e) => (
         <div key={e.id} className={cx("flex gap-2 leading-snug", e.kind === "finish" && "font-semibold text-berry", e.kind === "broke" && "text-berry")}>
           <span className="shrink-0 w-5 text-center">{ICON[e.kind] ?? "•"}</span>
           <span className="text-cocoa-2/90">{e.text}</span>
