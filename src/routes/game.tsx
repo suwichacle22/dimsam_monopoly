@@ -473,7 +473,7 @@ function Game({ token }: { token: string }) {
           />
         )}
         <EventLog view={view} className="h-48 lg:flex-1 lg:min-h-0" />
-        <div className="flex justify-between items-center gap-1 text-xs text-cocoa/50 px-1 whitespace-nowrap">
+        <div className="flex flex-wrap justify-center sm:justify-end items-center gap-x-1 gap-y-1.5 text-xs text-cocoa/50 px-1 whitespace-nowrap">
           <Link to="/settings">ตั้งค่า</Link>
           <button className="px-2 py-1 rounded-lg border border-cocoa/20" onClick={() => setDeckSheet("treasure")} title="ดูการ์ด">
             🃏<span className="hidden sm:inline"> ดูการ์ด</span>
