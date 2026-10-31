@@ -69,16 +69,15 @@ export function Decision({ view, disabled, actions, spaceHeld }: { view: GameVie
           ) : (
             <Btn tone="primary" disabled={disabled} onClick={() => actions.roll()} label="🎲 ทอยหาเบิ้ล" />
           )}
-          <button
-            type="button"
-            className="self-center text-sm text-cocoa/70 underline underline-offset-4 py-1 disabled:opacity-40"
+          <Btn
+            tone="red"
             disabled={disabled || me.cash < r.jailFine}
             onClick={() => {
               if (confirm(`จ่ายค่าไถ่ ${baht(r.jailFine)} เพื่อออกจากอ่างอาบน้ำเลยไหม?`)) actions.payJail();
             }}
-          >
-            หรือจ่ายค่าไถ่ {baht(r.jailFine)} ออกเลย
-          </button>
+            label="จ่ายค่าไถ่ ออกเลย"
+            amount={baht(r.jailFine)}
+          />
         </Card>
       );
     case "card_roll":
@@ -205,7 +204,7 @@ function Small({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-cocoa/75 leading-snug">{children}</p>;
 }
 
-function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "green" | "ghost" | "danger" | "tab"; disabled: boolean; onClick: () => void; label: string; amount?: string }) {
+function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "green" | "ghost" | "danger" | "tab" | "red"; disabled: boolean; onClick: () => void; label: string; amount?: string }) {
   return (
     <button
       disabled={disabled}
@@ -217,6 +216,7 @@ function Btn({ tone, disabled, onClick, label, amount }: { tone: "primary" | "gr
         tone === "ghost" && "bg-paper text-cocoa border-2 border-cocoa/20 shadow-[0_3px_0_rgba(var(--shadow-ink),0.2)]",
         tone === "danger" && "bg-berry text-white shadow-[0_4px_0_#a22d5a]",
         tone === "tab" && "bg-[#f08a2b] text-white shadow-[0_4px_0_#b8621a]",
+        tone === "red" && "bg-[#e2443c] text-white shadow-[0_4px_0_#a82e28]",
       )}
     >
       <span>{label}</span>
