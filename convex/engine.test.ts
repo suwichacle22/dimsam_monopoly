@@ -793,3 +793,85 @@ describe("aim gauge", () => {
     expect(c.game.dice).toEqual([1, 2]);
   });
 });
+
+describe("selling land to each other (ขายที่ดินให้กัน)", () => {
+  function setup(debt = 5000) {
+    const s = makeSnap([1, 2]);
+    s.props[6] = { ownerSeat: 0, houses: 2, landmark: false };
+    s.players[0].debt = debt; // A owes B
+    return s;
+  }
+
+  test("an accepted offer first cancels the seller's tab, then moves the land with its houses", () => {
+    const s = setup(5000);
+    E.offerSale(s, 0, 6, 1800);
+    expect(s.game.offer).toMatchObject({ fromSeat: 0, toSeat: 1, tileIndex: 6, price: 1800 });
+    E.respondOffer(s, 1, true);
+    expect(s.game.offer).toBeUndefined();
+    expect(s.props[6]).toMatchObject({ ownerSeat: 1, houses: 2 });
+    expect(s.players[0].debt).toBe(3200);
+    expect(s.players[0].cash).toBe(30000);
+    expect(s.players[1].cash).toBe(30000);
+    expect(JSON.parse(s.events.find((e) => e.kind === "sale")!.text)).toMatchObject({ price: 1800, offset: 1800, cash: 0 });
+  });
+
+  test("a price above the debt clears it and pays the rest in cash", () => {
+    const s = setup(5000);
+    E.offerSale(s, 0, 6, 8000);
+    E.respondOffer(s, 1, true);
+    expect(s.players[0].debt).toBe(0);
+    expect(s.players[0].cash).toBe(33000);
+    expect(s.players[1].cash).toBe(27000);
+  });
+
+  test("the buyer needs the cash part", () => {
+    const s = setup(0);
+    s.rules.tradeMode = "always";
+    s.players[1].cash = 500;
+    E.offerSale(s, 0, 6, 2000);
+    expect(() => E.respondOffer(s, 1, true)).toThrow(/เงินสดไม่พอ/);
+    expect(s.props[6].ownerSeat).toBe(0);
+  });
+
+  test("declining and cancelling clear the offer without changes", () => {
+    const s = setup(5000);
+    E.offerSale(s, 0, 6, 1800);
+    E.respondOffer(s, 1, false);
+    expect(s.game.offer).toBeUndefined();
+    E.offerSale(s, 0, 6, 1800);
+    E.cancelOffer(s, 0);
+    expect(s.game.offer).toBeUndefined();
+    expect(s.props[6].ownerSeat).toBe(0);
+    expect(s.players[0].debt).toBe(5000);
+  });
+
+  test("in debt-only mode you cannot offer without a tab; off mode blocks it entirely", () => {
+    const s = setup(0);
+    expect(() => E.offerSale(s, 0, 6, 1000)).toThrow(/ติดหนี้/);
+    s.rules.tradeMode = "always";
+    E.offerSale(s, 0, 6, 1000);
+    E.cancelOffer(s, 0);
+    s.rules.tradeMode = "off";
+    expect(() => E.offerSale(s, 0, 6, 1000)).toThrow(/ปิด/);
+  });
+
+  test("only your own land, only one open offer, and the buyer cannot be the seller", () => {
+    const s = setup(5000);
+    s.players[1].debt = 1000; // so the ownership check, not the debt check, is what stops B
+    expect(() => E.offerSale(s, 1, 6, 1000)).toThrow(/ไม่ใช่ที่ดินของคุณ/);
+    E.offerSale(s, 0, 6, 1000);
+    expect(() => E.respondOffer(s, 0, true)).toThrow(/ไม่มีข้อเสนอถึงคุณ/);
+    expect(() => E.cancelOffer(s, 1)).toThrow();
+  });
+
+  test("selling the land back to the bank voids the pending offer", () => {
+    const s = setup(5000);
+    s.props[6] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.offerSale(s, 0, 6, 1000);
+    s.game.turn = 0;
+    s.game.phase = "end";
+    E.sellLand(s, 0, 6);
+    expect(s.game.offer).toBeUndefined();
+    expect(() => E.respondOffer(s, 1, true)).toThrow(/ไม่มีข้อเสนอถึงคุณ/);
+  });
+});

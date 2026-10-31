@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView, TileView } from "~/lib/game";
 import { buildBlocker, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
@@ -11,6 +12,7 @@ export function TileSheet({
   onBuild,
   onSellHouse,
   onSellLand,
+  onOffer,
 }: {
   view: GameView;
   tile: TileView | null;
@@ -19,7 +21,14 @@ export function TileSheet({
   onBuild: (i: number) => void;
   onSellHouse: (i: number) => void;
   onSellLand: (i: number) => void;
+  /** offer this tile to the other player for a price (ขายที่ดินให้กัน) */
+  onOffer?: (i: number, price: number) => void;
 }) {
+  const [offering, setOffering] = useState(false);
+  const [price, setPrice] = useState(0);
+  useEffect(() => {
+    setOffering(false);
+  }, [tile?.index]);
   if (!tile) return null;
   const Art = TILE_ART[tile.index] ?? ART_BY_TYPE[tile.type];
   const prop = propAt(view, tile.index);
@@ -33,6 +42,20 @@ export function TileSheet({
   const toLandmark = prop && prop.houses >= r.maxHouses;
   const buildCost = Math.round((tile.housePrice ?? 0) * (toLandmark ? r.landmarkCostMultiplier : 1));
   const monopoly = prop && tile.group ? hasMonopoly(view, prop.ownerSeat, tile.group) : false;
+  const me = view.players.find((p) => p.seat === view.me)!;
+  const other = view.players.find((p) => p.seat !== view.me);
+  const mine = prop?.ownerSeat === view.me && view.game.status === "playing";
+  const offerBlocker = !mine || !onOffer || !other
+    ? null
+    : r.tradeMode === "off"
+      ? "ปิดการขายที่ดินให้กันอยู่ (เปิดได้ในตั้งค่า)"
+      : r.tradeMode === "debt" && me.debt <= 0
+        ? "เสนอขายให้อีกฝ่ายได้เฉพาะตอนที่คุณติดหนี้"
+        : view.game.offer
+          ? "มีข้อเสนอค้างอยู่แล้ว"
+          : null;
+  const canOffer = mine && !!onOffer && !!other && offerBlocker === null;
+  const suggested = (tile.price ?? 0) + (prop?.houses ?? 0) * (tile.housePrice ?? 0) + (prop?.landmark ? Math.round((tile.housePrice ?? 0) * r.landmarkCostMultiplier) : 0);
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-scrim/50" onClick={onClose}>
@@ -140,6 +163,43 @@ export function TileSheet({
                 ขายที่ดินคืน (+{baht(landSellValue(view, tile))})
               </button>
             )}
+          </div>
+        )}
+        {mine && offerBlocker && r.tradeMode !== "off" && <p className="px-4 pb-2 text-xs text-cocoa/60">ขายให้ {other?.name}: {offerBlocker}</p>}
+        {canOffer && !offering && (
+          <div className="px-4 pb-3">
+            <button className="btn-secondary w-full" disabled={busy} onClick={() => { setPrice(suggested); setOffering(true); }}>
+              🤝 เสนอขายให้ {other!.name}
+            </button>
+          </div>
+        )}
+        {canOffer && offering && (
+          <div className="px-4 pb-4 flex flex-col gap-2 border-t border-cocoa/10 pt-3">
+            <div className="text-sm font-semibold text-cocoa">ตั้งราคาขายให้ {other!.name}</div>
+            <div className="text-xs text-cocoa/60">
+              ราคาซื้อรวมสิ่งปลูกสร้าง {baht(suggested)} · ขายคืนธนาคารได้ {baht(landSellValue(view, tile) + (prop?.houses ?? 0) * houseSellValue(view, tile, false) + (prop?.landmark ? houseSellValue(view, tile, true) : 0))}
+              {me.debt > 0 && ` · คุณติด ${other!.name} อยู่ ${baht(me.debt)} เงินที่ได้จะหักหนี้ก่อน`}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                type="number"
+                inputMode="numeric"
+                className="input flex-1 text-lg tabular-nums"
+                value={price}
+                min={1}
+                step={100}
+                onChange={(e) => setPrice(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              />
+              <span className="text-cocoa/70">฿</span>
+            </div>
+            <div className="flex gap-2">
+              <button className="btn-primary flex-1" disabled={busy || price <= 0} onClick={() => onOffer!(tile.index, price)}>
+                ส่งข้อเสนอ {price > 0 ? baht(price) : ""}
+              </button>
+              <button className="btn-secondary" disabled={busy} onClick={() => setOffering(false)}>
+                ยกเลิก
+              </button>
+            </div>
           </div>
         )}
         <button className="w-full py-3 text-sm text-cocoa/60" onClick={onClose}>

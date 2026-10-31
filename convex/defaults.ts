@@ -208,6 +208,8 @@ export type Rules = {
   gaugeAccuracy: number;
   /** end the turn automatically once the animations finish (unless a house could still be built) */
   autoEndTurn: boolean;
+  /** selling land to the other player: only while in debt, any time, or never */
+  tradeMode: "debt" | "always" | "off";
 };
 
 export const DEFAULT_RULES: Rules = {
@@ -234,6 +236,7 @@ export const DEFAULT_RULES: Rules = {
   gaugeEnabled: true,
   gaugeAccuracy: 0.1,
   autoEndTurn: true,
+  tradeMode: "debt",
 };
 
 export const RULE_LABELS: Record<keyof Rules, string> = {
@@ -260,4 +263,5 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   gaugeEnabled: "เกจเล็งลูกเต๋า (กดปุ่มค้างเพื่อเล็งแต้ม)",
   gaugeAccuracy: "โอกาสที่เล็งแล้วได้แต้มตรงเป้า (0 = สุ่มล้วน, 1 = ตรงทุกครั้ง)",
   autoEndTurn: "จบตาอัตโนมัติ (หลังซื้อ/สร้างสำเร็จ หรือเมื่อไม่มีอะไรให้สร้าง)",
+  tradeMode: "ขายที่ดินให้กัน (เสนอขายที่ดินของตัวเองให้อีกฝ่าย เงินที่ได้หักหนี้ก่อน)",
 };

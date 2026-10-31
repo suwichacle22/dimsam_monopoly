@@ -9,6 +9,7 @@ import { CoinFlights, type Flight } from "~/components/CoinFlights";
 import { MoneyBurst, type Burst } from "~/components/MoneyBurst";
 import { TestPanel } from "~/components/TestPanel";
 import { DeckSheet } from "~/components/DeckSheet";
+import { OfferCard } from "~/components/OfferCard";
 import { ActionPanel } from "~/components/ActionPanel";
 import { PlayerPanel } from "~/components/PlayerPanel";
 import { EventLog } from "~/components/EventLog";
@@ -68,6 +69,9 @@ function Game({ token }: { token: string }) {
     sellLand: useMutation(api.game.sellLand),
     endTurn: useMutation(api.game.endTurn),
     giveUp: useMutation(api.game.giveUp),
+    offerSale: useMutation(api.game.offerSale),
+    cancelOffer: useMutation(api.game.cancelOffer),
+    respondOffer: useMutation(api.game.respondOffer),
     newGame: useMutation(api.game.newGame),
     heartbeat: useMutation(api.game.heartbeat),
     botStep: useMutation(api.game.botStep),
@@ -242,6 +246,28 @@ function Game({ token }: { token: string }) {
           if (cancelled) return;
         }
       }
+      // land sold between the players (ขายที่ดินให้กัน)
+      const saleEv = fresh.find((e) => e.kind === "sale");
+      if (saleEv) {
+        const t = JSON.parse(saleEv.text) as { from: number; to: number; tile: number; price: number; offset: number; cash: number };
+        const seller = v.players[t.from];
+        const buyer = v.players[t.to];
+        const tile = v.tiles.find((x) => x.index === t.tile);
+        const bits = [t.offset > 0 ? `หักหนี้ ${t.offset.toLocaleString()}` : "", t.cash > 0 ? `จ่ายสด ${t.cash.toLocaleString()}` : ""].filter(Boolean).join(" · ");
+        setBurst({
+          id: actionAt + 3,
+          amount: t.to === v.me ? -t.price : t.price,
+          tone: "tab",
+          label: t.to === v.me ? `คุณซื้อ ${tile?.name ?? ""} จาก ${seller.name}` : `${buyer.name} ซื้อ ${tile?.name ?? ""} จากคุณ`,
+          kicker: "ซื้อขายที่ดิน 🤝",
+          detail: bits || undefined,
+          variant: t.to === v.me ? buyer.variant : seller.variant,
+        });
+        play("cash");
+        if (tile) pushFx(tile.index, "buy");
+        await sleep(2300);
+        if (cancelled) return;
+      }
       // tax tile burst (ค่าหาหมอ, ค่าอาบน้ำตัดขน): the money just vanishes, so show it clearly
       const taxEv = fresh.find((e) => e.kind === "tax");
       if (taxEv && taxEv.seat !== undefined) {
@@ -318,13 +344,14 @@ function Game({ token }: { token: string }) {
 
   // solo mode: when it is the bot's turn and nothing is animating, let it act after a short pause
   const botTurn = !!view && view.game.status === "playing" && !!view.players[view.game.turn]?.bot;
+  const botOffer = !!view && view.game.status === "playing" && !!view.game.offer && !!view.players[view.game.offer.toSeat]?.bot;
   const busyNow = rolling || walking || !!burst || !!card;
   useEffect(() => {
-    if (!botTurn || busyNow) return;
+    if (!(botTurn || botOffer) || busyNow) return;
     const id = setTimeout(() => m.botStep({ token }).catch(() => {}), 1100);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botTurn, busyNow, view?.game.phase, view?.game.actionAt, token]);
+  }, [botTurn, botOffer, busyNow, view?.game.phase, view?.game.actionAt, token]);
 
   // auto end-turn: once everything has settled, end the turn by itself, except when the player
   // could still build a house where they stand (then they press build or จบตา themselves).
@@ -460,6 +487,7 @@ function Game({ token }: { token: string }) {
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
+        <OfferCard view={view} busy={pendingAction} onRespond={(accept) => run(() => m.respondOffer({ token, accept }))} onCancel={() => run(() => m.cancelOffer({ token }))} />
         <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} autoEnding={autoEnding} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
         <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
@@ -531,6 +559,7 @@ function Game({ token }: { token: string }) {
         onBuild={(i) => run(() => m.build({ token, tileIndex: i }))}
         onSellHouse={(i) => run(() => m.sellHouse({ token, tileIndex: i }))}
         onSellLand={(i) => run(() => m.sellLand({ token, tileIndex: i }))}
+        onOffer={(i, price) => run(async () => { await m.offerSale({ token, tileIndex: i, price }); setSheet(null); })}
       />
       <CardToast card={card ?? null} onClose={() => setCard(null)} />
       {deckSheet && <DeckSheet token={token} initial={deckSheet} onClose={() => setDeckSheet(null)} />}

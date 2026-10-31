@@ -82,7 +82,13 @@ function RulesEditor({ password, rules }: { password: string; rules: Rules }) {
         return (
           <label key={key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
             <span className="flex-1 text-sm text-cocoa">{RULE_LABELS[key]}</span>
-            {typeof v === "boolean" ? (
+            {key === "tradeMode" ? (
+              <select className="input w-full sm:w-64" value={v as string} onChange={(e) => setDraft({ ...draft, tradeMode: e.target.value as Rules["tradeMode"] })}>
+                <option value="debt">เฉพาะตอนติดหนี้อีกฝ่าย</option>
+                <option value="always">ตลอดเวลา</option>
+                <option value="off">ปิด</option>
+              </select>
+            ) : typeof v === "boolean" ? (
               <input type="checkbox" className="w-5 h-5 accent-caramel" checked={v} onChange={(e) => setDraft({ ...draft, [key]: e.target.checked })} />
             ) : Array.isArray(v) ? (
               <input

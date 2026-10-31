@@ -49,7 +49,11 @@ export type GameState = {
   moves: { seat: number; from: number; to: number; teleport: boolean }[];
   actionAt: number;
   winner?: number;
+  /** one open "sell you my land" offer between the two players */
+  offer?: Offer;
 };
+
+export type Offer = { fromSeat: number; toSeat: number; tileIndex: number; price: number; at: number };
 
 export type PlayerState = {
   seat: number;
@@ -222,6 +226,7 @@ function charge(s: Snapshot, seat: number, amount: number, why: string, toSeat?:
 function bankrupt(s: Snapshot, seat: number, why = "ล้มละลาย!") {
   const p = s.players[seat];
   p.bankrupt = true;
+  s.game.offer = undefined;
   const winner = s.players.find((x) => !x.bankrupt);
   s.game.status = "finished";
   s.game.winner = winner?.seat;
@@ -770,6 +775,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
 
 export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
   requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour", "rent");
+  if (s.game.offer?.tileIndex === tileIndex) s.game.offer = undefined; // the land is gone, so is the offer
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];
@@ -780,6 +786,80 @@ export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
   p.cash += value;
   log(s, "sell", `${p.name} ขาย ${tile.name} คืนธนาคาร ได้ ${fmt(value)} บาท`, seat);
   afterSale(s, seat);
+}
+
+// ── selling land to each other (ขายที่ดินให้กัน) ─────────────────────────
+// The seller names a price for one of their tiles (houses included). If the buyer accepts, the
+// price first cancels what the seller owes the buyer on the tab; any remainder is paid in cash.
+
+function tradePartner(s: Snapshot, seat: number): PlayerState {
+  const other = s.players.find((x) => x.seat !== seat && !x.bankrupt);
+  if (!other) throw new GameError("ไม่มีผู้เล่นอีกฝ่าย");
+  return other;
+}
+
+export function offerSale(s: Snapshot, seat: number, tileIndex: number, price: number) {
+  if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
+  begin(s);
+  const mode = s.rules.tradeMode;
+  if (mode === "off") throw new GameError("ปิดการขายที่ดินให้กันอยู่ (เปิดได้ในตั้งค่า)");
+  const p = s.players[seat];
+  if (p.bankrupt) throw new GameError("คุณออกจากเกมแล้ว");
+  if (mode === "debt" && p.debt <= 0) throw new GameError("เสนอขายได้เฉพาะตอนที่คุณติดหนี้อีกฝ่าย");
+  const prop = s.props[tileIndex];
+  if (!prop || prop.ownerSeat !== seat) throw new GameError("ไม่ใช่ที่ดินของคุณ");
+  if (!Number.isInteger(price) || price <= 0) throw new GameError("ใส่ราคาเป็นจำนวนเต็มมากกว่า 0");
+  const to = tradePartner(s, seat);
+  if (s.game.offer && s.game.offer.fromSeat !== seat) throw new GameError("มีข้อเสนอจากอีกฝ่ายค้างอยู่ ตอบก่อนนะ");
+  const tile = tileAt(s, tileIndex);
+  s.game.offer = { fromSeat: seat, toSeat: to.seat, tileIndex, price, at: s.now };
+  log(s, "offer", `${p.name} เสนอขาย ${tile.name} ให้ ${to.name} ${fmt(price)} บาท`, seat);
+}
+
+export function cancelOffer(s: Snapshot, seat: number) {
+  if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
+  begin(s);
+  const o = s.game.offer;
+  if (!o || o.fromSeat !== seat) throw new GameError("ไม่มีข้อเสนอของคุณค้างอยู่");
+  s.game.offer = undefined;
+  log(s, "offer", `${s.players[seat].name} ยกเลิกข้อเสนอขาย ${tileAt(s, o.tileIndex).name}`, seat);
+}
+
+/** How an accepted offer would settle: part cancels the seller's tab, the rest is cash. */
+export function salePreview(s: Snapshot, o: Offer): { offset: number; cash: number } {
+  const offset = Math.min(o.price, s.players[o.fromSeat].debt);
+  return { offset, cash: o.price - offset };
+}
+
+export function respondOffer(s: Snapshot, seat: number, accept: boolean) {
+  if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
+  begin(s);
+  const o = s.game.offer;
+  if (!o || o.toSeat !== seat) throw new GameError("ไม่มีข้อเสนอถึงคุณ");
+  const seller = s.players[o.fromSeat];
+  const buyer = s.players[seat];
+  const tile = tileAt(s, o.tileIndex);
+  if (!accept) {
+    s.game.offer = undefined;
+    log(s, "offer", `${buyer.name} ไม่ซื้อ ${tile.name}`, seat);
+    return;
+  }
+  const prop = s.props[o.tileIndex];
+  if (!prop || prop.ownerSeat !== o.fromSeat) {
+    s.game.offer = undefined;
+    throw new GameError("ที่ดินนี้เปลี่ยนมือไปแล้ว ข้อเสนอถูกยกเลิก");
+  }
+  const { offset, cash } = salePreview(s, o);
+  if (buyer.cash < cash) throw new GameError(`เงินสดไม่พอ ต้องจ่ายสด ${fmt(cash)} บาท`);
+  seller.debt -= offset;
+  buyer.cash -= cash;
+  seller.cash += cash;
+  prop.ownerSeat = seat;
+  s.game.offer = undefined;
+  s.events.push({ seat, kind: "sale", text: JSON.stringify({ from: o.fromSeat, to: seat, tile: o.tileIndex, price: o.price, offset, cash }) });
+  const how = [offset > 0 ? `หักหนี้ ${fmt(offset)}` : "", cash > 0 ? `จ่ายสด ${fmt(cash)}` : ""].filter(Boolean).join(" · ");
+  log(s, "offer", `${seller.name} ขาย ${tile.name} ให้ ${buyer.name} ${fmt(o.price)} บาท${how ? ` (${how})` : ""}`, seat);
+  afterSale(s, o.fromSeat); // a broke seller may now be solvent
 }
 
 export function giveUp(s: Snapshot, seat: number) {

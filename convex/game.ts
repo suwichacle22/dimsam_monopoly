@@ -172,6 +172,17 @@ export const botStep = mutation({
       const seat = bot.seat;
       const p = s.players[seat];
       const tile = s.tiles.find((t) => t.index === p.position);
+      // an offer addressed to the bot: buy when it is fair and leaves a cushion, else decline
+      if (s.game.offer && s.game.offer.toSeat === seat) {
+        const o = s.game.offer;
+        const t = s.tiles.find((x) => x.index === o.tileIndex);
+        const pr = s.props[o.tileIndex];
+        const worth = (t?.price ?? 0) + (pr?.houses ?? 0) * (t?.housePrice ?? 0) + (pr?.landmark ? (t?.housePrice ?? 0) * s.rules.landmarkCostMultiplier : 0);
+        const { cash } = E.salePreview(s, o);
+        E.respondOffer(s, seat, o.price <= worth * 1.15 && p.cash - cash >= 3000);
+        await saveSnapshot(ctx, loaded);
+        return "offer";
+      }
       switch (game.phase) {
         case "roll":
         case "card_roll":
@@ -424,6 +435,18 @@ export const sellLand = mutation({
 export const endTurn = mutation({
   args: { token: v.string() },
   handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.endTurn(s, seat)),
+});
+export const offerSale = mutation({
+  args: { token: v.string(), tileIndex: v.number(), price: v.number() },
+  handler: (ctx, { token, tileIndex, price }) => act(ctx, token, (s, seat) => E.offerSale(s, seat, tileIndex, price)),
+});
+export const cancelOffer = mutation({
+  args: { token: v.string() },
+  handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.cancelOffer(s, seat)),
+});
+export const respondOffer = mutation({
+  args: { token: v.string(), accept: v.boolean() },
+  handler: (ctx, { token, accept }) => act(ctx, token, (s, seat) => E.respondOffer(s, seat, accept)),
 });
 export const giveUp = mutation({
   args: { token: v.string() },

@@ -85,6 +85,7 @@ export const rulesFields = {
   gaugeEnabled: v.optional(v.boolean()),
   gaugeAccuracy: v.optional(v.number()),
   autoEndTurn: v.optional(v.boolean()),
+  tradeMode: v.optional(v.union(v.literal("debt"), v.literal("always"), v.literal("off"))),
 };
 
 export const phase = v.union(
@@ -136,6 +137,7 @@ export default defineSchema({
     lastCard: v.optional(v.object({ deck: v.string(), text: v.string(), seat: v.number(), at: v.number() })),
     moves: v.array(v.object({ seat: v.number(), from: v.number(), to: v.number(), teleport: v.boolean() })),
     actionAt: v.number(),
+    offer: v.optional(v.object({ fromSeat: v.number(), toSeat: v.number(), tileIndex: v.number(), price: v.number(), at: v.number() })),
     winner: v.optional(v.number()),
     createdAt: v.number(),
     startedAt: v.optional(v.number()),

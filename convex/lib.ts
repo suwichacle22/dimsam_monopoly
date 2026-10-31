@@ -131,6 +131,7 @@ export async function saveSnapshot(ctx: MutationCtx, loaded: Loaded) {
     moves: g.moves,
     actionAt: g.actionAt,
     winner: g.winner,
+    offer: g.offer,
     ...(g.status === "finished" && !game.finishedAt ? { finishedAt: snap.now } : {}),
     ...(g.status === "playing" && !game.startedAt ? { startedAt: snap.now } : {}),
   });
