@@ -528,7 +528,7 @@ function Game({ token }: { token: string }) {
           </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
-            title="แสดงจำนวนช่องที่ต้องเดินจากตัวคุณบนทุกช่อง"
+            title="แสดงจำนวนก้าว 1–12 จากตัวคุณบนกระดาน"
             onClick={() => {
               const next = !showSteps;
               setShowSteps(next);

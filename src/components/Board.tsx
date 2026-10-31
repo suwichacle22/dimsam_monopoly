@@ -27,6 +27,8 @@ export type TileFx = { index: number; kind: "land" | "buy" | "build"; key: numbe
 export type Callout = { index: number; text: string; sub?: string; key: number };
 
 const PIECE_COLOR = { blue: "#4fa7e8", pink: "#f06aa8" } as const;
+/** highest two-dice total, the furthest a single roll can reach */
+const MAX_STEPS = 12;
 
 export function Board({
   view,
@@ -54,7 +56,7 @@ export function Board({
   animate: boolean;
   /** the latest action is still playing out: don't mark the tile it ends on yet */
   resultHidden?: boolean;
-  /** tile the step numbers count from; undefined hides them */
+  /** tile the 1–12 step numbers count from; undefined hides them */
   stepsFrom?: number;
   /** replaces the mascot with a decision card (buy, jail, …) */
   overlay?: React.ReactNode;
@@ -94,7 +96,6 @@ export function Board({
               owner={owner}
               animate={animate}
               highlight={!resultHidden && view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
-              steps={stepsFrom === undefined ? undefined : (tile.index - stepsFrom + view.tiles.length) % view.tiles.length}
               fx={fx.find((f) => f.index === tile.index)}
               onClick={() => onTileClick(tile)}
             />
@@ -102,7 +103,7 @@ export function Board({
         })}
 
         {/* centre */}
-        <div style={{ gridRow: "2 / 11", gridColumn: "2 / 11" }} className="relative flex flex-col items-center justify-between p-[4%] overflow-hidden">
+        <div style={{ gridRow: "2 / 11", gridColumn: "2 / 11" }} className={cx("relative flex flex-col items-center justify-between overflow-hidden", stepsFrom !== undefined ? "px-[6%] pt-[6%] pb-[11%]" : "p-[4%]")}>
           <div className="absolute inset-0 opacity-[0.07] pointer-events-none" aria-hidden>
             <PawField />
           </div>
@@ -130,6 +131,25 @@ export function Board({
           </div>
         </div>
       </div>
+
+      {/* step numbers sit just inside the ring of tiles, beside each tile instead of on its art */}
+      {stepsFrom !== undefined &&
+        Array.from({ length: MAX_STEPS }, (_, i) => {
+          const index = (stepsFrom + i + 1) % view.tiles.length;
+          const c = tileCenter(index);
+          // corners step diagonally inward, clear of the numbers beside them
+          const inset = gridPos(index).corner ? 18.5 : 13.8;
+          return (
+            <span
+              key={i}
+              aria-hidden
+              className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 min-w-[1.6em] rounded-full bg-cocoa text-paper text-center text-[clamp(9px,1.6vw,14px)] font-bold leading-[1.5] tabular-nums pointer-events-none"
+              style={{ left: `${Math.min(100 - inset, Math.max(inset, c.x))}%`, top: `${Math.min(100 - inset, Math.max(inset, c.y))}%` }}
+            >
+              {i + 1}
+            </span>
+          );
+        })}
 
       {callout && (() => {
         const c = tileCenter(callout.index);
