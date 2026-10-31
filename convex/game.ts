@@ -165,7 +165,8 @@ export const botStep = mutation({
       const game = await ctx.db.get(me.gameId);
       if (!game || game.status !== "playing") return "idle";
       const players = await gamePlayers(ctx, game._id);
-      const bot = players.find((p) => p.seat === game.turn && p.bot);
+      // an offer addressed to the bot is answered on anyone's turn; otherwise the bot only acts on its own turn
+      const bot = players.find((p) => p.bot && (p.seat === game.turn || game.offer?.toSeat === p.seat));
       if (!bot) return "idle";
       const loaded = await loadSnapshot(ctx, game);
       const s = loaded.snap;
@@ -175,14 +176,17 @@ export const botStep = mutation({
       // an offer addressed to the bot: buy when it is fair and leaves a cushion, else decline
       if (s.game.offer && s.game.offer.toSeat === seat) {
         const o = s.game.offer;
-        const t = s.tiles.find((x) => x.index === o.tileIndex);
-        const pr = s.props[o.tileIndex];
-        const worth = (t?.price ?? 0) + (pr?.houses ?? 0) * (t?.housePrice ?? 0) + (pr?.landmark ? (t?.housePrice ?? 0) * s.rules.landmarkCostMultiplier : 0);
         const { cash } = E.salePreview(s, o);
-        E.respondOffer(s, seat, o.price <= worth * 1.15 && p.cash - cash >= 3000);
+        const ok = o.price <= E.builtValue(s, o.tileIndex) * 1.15 && p.cash - cash >= 3000;
+        try {
+          E.respondOffer(s, seat, ok);
+        } catch {
+          E.respondOffer(s, seat, false); // e.g. rent pending on that tile → just decline
+        }
         await saveSnapshot(ctx, loaded);
         return "offer";
       }
+      if (game.turn !== seat) return "idle";
       switch (game.phase) {
         case "roll":
         case "card_roll":

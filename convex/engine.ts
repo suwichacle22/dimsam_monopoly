@@ -810,7 +810,10 @@ export function offerSale(s: Snapshot, seat: number, tileIndex: number, price: n
   if (!prop || prop.ownerSeat !== seat) throw new GameError("ไม่ใช่ที่ดินของคุณ");
   if (!Number.isInteger(price) || price <= 0) throw new GameError("ใส่ราคาเป็นจำนวนเต็มมากกว่า 0");
   const to = tradePartner(s, seat);
-  if (s.game.offer && s.game.offer.fromSeat !== seat) throw new GameError("มีข้อเสนอจากอีกฝ่ายค้างอยู่ ตอบก่อนนะ");
+  if (s.game.offer) {
+    throw new GameError(s.game.offer.fromSeat === seat ? "คุณมีข้อเสนอค้างอยู่แล้ว ยกเลิกก่อนถ้าจะเปลี่ยนราคา" : "มีข้อเสนอจากอีกฝ่ายค้างอยู่ ตอบก่อนนะ");
+  }
+  if (s.game.pending?.kind === "rent" && s.game.pending.tileIndex === tileIndex) throw new GameError("ที่ดินนี้มีค่าเช่าค้างจ่ายอยู่ รอจ่ายค่าเช่าก่อน");
   const tile = tileAt(s, tileIndex);
   s.game.offer = { fromSeat: seat, toSeat: to.seat, tileIndex, price, at: s.now };
   log(s, "offer", `${p.name} เสนอขาย ${tile.name} ให้ ${to.name} ${fmt(price)} บาท`, seat);
@@ -823,6 +826,14 @@ export function cancelOffer(s: Snapshot, seat: number) {
   if (!o || o.fromSeat !== seat) throw new GameError("ไม่มีข้อเสนอของคุณค้างอยู่");
   s.game.offer = undefined;
   log(s, "offer", `${s.players[seat].name} ยกเลิกข้อเสนอขาย ${tileAt(s, o.tileIndex).name}`, seat);
+}
+
+/** Purchase price of a tile plus everything built on it (what the owner paid in total). */
+export function builtValue(s: Snapshot, tileIndex: number): number {
+  const t = tileAt(s, tileIndex);
+  const pr = s.props[tileIndex];
+  const house = t.housePrice ?? 0;
+  return (t.price ?? 0) + (pr?.houses ?? 0) * house + (pr?.landmark ? Math.round(house * s.rules.landmarkCostMultiplier) : 0);
 }
 
 /** How an accepted offer would settle: part cancels the seller's tab, the rest is cash. */
@@ -846,11 +857,14 @@ export function respondOffer(s: Snapshot, seat: number, accept: boolean) {
   }
   const prop = s.props[o.tileIndex];
   if (!prop || prop.ownerSeat !== o.fromSeat) {
+    // the land moved under the offer: void it (must not throw, a throw would roll this back)
     s.game.offer = undefined;
-    throw new GameError("ที่ดินนี้เปลี่ยนมือไปแล้ว ข้อเสนอถูกยกเลิก");
+    log(s, "offer", `ข้อเสนอขาย ${tile.name} ถูกยกเลิก เพราะที่ดินเปลี่ยนมือไปแล้ว`, seat);
+    return;
   }
+  if (s.game.pending?.kind === "rent" && s.game.pending.tileIndex === o.tileIndex) throw new GameError("ที่ดินนี้มีค่าเช่าค้างจ่ายอยู่ จ่ายค่าเช่าก่อนแล้วค่อยซื้อ");
   const { offset, cash } = salePreview(s, o);
-  if (buyer.cash < cash) throw new GameError(`เงินสดไม่พอ ต้องจ่ายสด ${fmt(cash)} บาท`);
+  if (cash > 0 && buyer.cash < cash) throw new GameError(`เงินสดไม่พอ ต้องจ่ายสด ${fmt(cash)} บาท`);
   seller.debt -= offset;
   buyer.cash -= cash;
   seller.cash += cash;

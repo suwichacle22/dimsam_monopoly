@@ -78,8 +78,9 @@ export async function loadSnapshot(ctx: Ctx, game: Doc<"games">): Promise<Loaded
   const propMap: Record<number, Prop> = {};
   for (const p of props) propMap[p.tileIndex] = { ownerSeat: p.ownerSeat, houses: p.houses, landmark: p.landmark };
   const { _id, _creationTime, createdAt, startedAt, finishedAt, ...gameState } = game;
+  const rules = await getRules(ctx);
   const snap: Snapshot = {
-    rules: await getRules(ctx),
+    rules,
     tiles: await getTiles(ctx),
     cards: await getCards(ctx),
     game: {
@@ -97,7 +98,7 @@ export async function loadSnapshot(ctx: Ctx, game: Doc<"games">): Promise<Loaded
       position: p.position,
       inJail: p.inJail,
       jailTurns: p.jailTurns,
-      jailLimit: p.jailLimit ?? 0,
+      jailLimit: p.jailLimit ?? rules.jailMaxTurns, // players jailed before this field existed keep the old rule
       skipTurns: p.skipTurns,
       bankrupt: p.bankrupt,
       debt: p.debt ?? 0,

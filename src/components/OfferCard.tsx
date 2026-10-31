@@ -1,6 +1,6 @@
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView } from "~/lib/game";
-import { propAt } from "~/lib/game";
+import { offerSettle, propAt } from "~/lib/game";
 import { baht, cx } from "~/lib/format";
 
 /** The one open "sell you my land" offer: a decision card for the buyer, a waiting row for the seller. */
@@ -14,8 +14,7 @@ export function OfferCard({ view, busy, onRespond, onCancel }: { view: GameView;
   const me = view.players.find((p) => p.seat === view.me)!;
   const prop = propAt(view, tile.index);
   const Art = TILE_ART[tile.index] ?? ART_BY_TYPE[tile.type];
-  const offset = Math.min(o.price, seller.debt);
-  const cash = o.price - offset;
+  const { offset, cash } = offerSettle(view, o);
   const what = prop?.landmark ? "แลนด์มาร์ก ★" : prop && prop.houses > 0 ? `บ้าน ${prop.houses} หลัง` : "ที่ดินเปล่า";
 
   if (o.fromSeat === view.me) {

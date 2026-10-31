@@ -401,7 +401,8 @@ function Game({ token }: { token: string }) {
 
   // Space: in the normal roll phase hold-to-aim drives the gauge; elsewhere a plain roll. Escape closes sheets.
   const [spaceHeld, setSpaceHeld] = useState(false);
-  const gaugePhase = canRollNow && (view!.game.phase === "roll" || view!.game.phase === "jail") && view!.rules.gaugeEnabled;
+  // the jail gauge lives in the Decision popup, which a tile sheet hides → plain roll while a sheet is open
+  const gaugePhase = canRollNow && view!.rules.gaugeEnabled && (view!.game.phase === "roll" || (view!.game.phase === "jail" && !sheet));
   useHotkey("Space", () => setSpaceHeld(true), { enabled: gaugePhase && !spaceHeld, eventType: "keydown", requireReset: true, conflictBehavior: "allow", preventDefault: "always" });
   useHotkey("Space", () => setSpaceHeld(false), { enabled: spaceHeld, eventType: "keyup", conflictBehavior: "allow", preventDefault: "always" });
   useHotkey("Space", () => run(() => m.roll({ token }), true), { enabled: canRollNow && !gaugePhase, conflictBehavior: "allow", preventDefault: "always" });

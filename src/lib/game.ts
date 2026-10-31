@@ -50,6 +50,25 @@ export function canSellNow(view: GameView, seat: number, tile: TileView): boolea
   return ["roll", "end", "jail", "broke", "world_tour", "rent"].includes(view.game.phase);
 }
 
+/** Purchase price of a tile plus everything built on it (mirrors engine builtValue). */
+export function builtValue(view: GameView, tile: TileView): number {
+  const prop = propAt(view, tile.index);
+  const house = tile.housePrice ?? 0;
+  return (tile.price ?? 0) + (prop?.houses ?? 0) * house + (prop?.landmark ? Math.round(house * view.rules.landmarkCostMultiplier) : 0);
+}
+
+/** What the owner would get selling the tile and its buildings back to the bank. */
+export function bankValue(view: GameView, tile: TileView): number {
+  const prop = propAt(view, tile.index);
+  return landSellValue(view, tile) + (prop?.houses ?? 0) * houseSellValue(view, tile, false) + (prop?.landmark ? houseSellValue(view, tile, true) : 0);
+}
+
+/** How an accepted offer settles: the seller's tab is cancelled first, the rest is cash (mirrors engine salePreview). */
+export function offerSettle(view: GameView, offer: NonNullable<GameView["game"]["offer"]>): { offset: number; cash: number } {
+  const offset = Math.min(offer.price, view.players[offer.fromSeat]?.debt ?? 0);
+  return { offset, cash: offer.price - offset };
+}
+
 export function rentPreview(view: GameView, tile: TileView, diceSum = 7): number {
   const prop = propAt(view, tile.index);
   if (!prop) return 0;

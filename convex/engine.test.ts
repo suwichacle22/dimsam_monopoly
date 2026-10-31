@@ -864,6 +864,38 @@ describe("selling land to each other (ขายที่ดินให้กั
     expect(() => E.cancelOffer(s, 1)).toThrow();
   });
 
+  test("a second offer is refused until the first is cancelled, so the buyer always accepts what they saw", () => {
+    const s = setup(5000);
+    s.props[39] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.offerSale(s, 0, 6, 1000);
+    expect(() => E.offerSale(s, 0, 39, 50000)).toThrow(/ค้างอยู่แล้ว/);
+    E.respondOffer(s, 1, true);
+    expect(s.props[6].ownerSeat).toBe(1);
+    expect(s.props[39].ownerSeat).toBe(0);
+  });
+
+  test("a tile with rent pending on it cannot be offered or bought until the rent is settled", () => {
+    const s = setup(5000);
+    s.game.turn = 1;
+    s.game.phase = "rent";
+    s.game.pending = { kind: "rent", tileIndex: 6, amount: 900, toSeat: 0 };
+    expect(() => E.offerSale(s, 0, 6, 1000)).toThrow(/ค่าเช่าค้าง/);
+    s.game.pending = undefined;
+    E.offerSale(s, 0, 6, 1000);
+    s.game.pending = { kind: "rent", tileIndex: 6, amount: 900, toSeat: 0 };
+    expect(() => E.respondOffer(s, 1, true)).toThrow(/ค่าเช่าค้าง/);
+  });
+
+  test("a fully debt-offset sale needs no cash, even from a buyer below zero", () => {
+    const s = setup(5000);
+    s.players[1].cash = -500;
+    E.offerSale(s, 0, 6, 1000);
+    E.respondOffer(s, 1, true);
+    expect(s.props[6].ownerSeat).toBe(1);
+    expect(s.players[1].cash).toBe(-500);
+    expect(s.players[0].debt).toBe(4000);
+  });
+
   test("selling the land back to the bank voids the pending offer", () => {
     const s = setup(5000);
     s.props[6] = { ownerSeat: 0, houses: 0, landmark: false };

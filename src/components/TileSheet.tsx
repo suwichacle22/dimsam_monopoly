@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { TILE_ART, ART_BY_TYPE } from "~/art/tiles";
 import type { GameView, TileView } from "~/lib/game";
-import { buildBlocker, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
+import { bankValue, buildBlocker, builtValue, canSellNow, hasMonopoly, houseSellValue, landSellValue, propAt, rentPreview } from "~/lib/game";
 import { baht, cx, GROUP_COLORS, TYPE_LABEL } from "~/lib/format";
 
 export function TileSheet({
@@ -25,7 +25,8 @@ export function TileSheet({
   onOffer?: (i: number, price: number) => void;
 }) {
   const [offering, setOffering] = useState(false);
-  const [price, setPrice] = useState(0);
+  const [priceText, setPriceText] = useState("");
+  const price = Math.floor(Number(priceText) || 0);
   useEffect(() => {
     setOffering(false);
   }, [tile?.index]);
@@ -55,7 +56,7 @@ export function TileSheet({
           ? "มีข้อเสนอค้างอยู่แล้ว"
           : null;
   const canOffer = mine && !!onOffer && !!other && offerBlocker === null;
-  const suggested = (tile.price ?? 0) + (prop?.houses ?? 0) * (tile.housePrice ?? 0) + (prop?.landmark ? Math.round((tile.housePrice ?? 0) * r.landmarkCostMultiplier) : 0);
+  const suggested = builtValue(view, tile);
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-scrim/50" onClick={onClose}>
@@ -168,7 +169,7 @@ export function TileSheet({
         {mine && offerBlocker && r.tradeMode !== "off" && <p className="px-4 pb-2 text-xs text-cocoa/60">ขายให้ {other?.name}: {offerBlocker}</p>}
         {canOffer && !offering && (
           <div className="px-4 pb-3">
-            <button className="btn-secondary w-full" disabled={busy} onClick={() => { setPrice(suggested); setOffering(true); }}>
+            <button className="btn-secondary w-full" disabled={busy} onClick={() => { setPriceText(String(suggested)); setOffering(true); }}>
               🤝 เสนอขายให้ {other!.name}
             </button>
           </div>
@@ -177,7 +178,7 @@ export function TileSheet({
           <div className="px-4 pb-4 flex flex-col gap-2 border-t border-cocoa/10 pt-3">
             <div className="text-sm font-semibold text-cocoa">ตั้งราคาขายให้ {other!.name}</div>
             <div className="text-xs text-cocoa/60">
-              ราคาซื้อรวมสิ่งปลูกสร้าง {baht(suggested)} · ขายคืนธนาคารได้ {baht(landSellValue(view, tile) + (prop?.houses ?? 0) * houseSellValue(view, tile, false) + (prop?.landmark ? houseSellValue(view, tile, true) : 0))}
+              ราคาซื้อรวมสิ่งปลูกสร้าง {baht(suggested)} · ขายคืนธนาคารได้ {baht(bankValue(view, tile))}
               {me.debt > 0 && ` · คุณติด ${other!.name} อยู่ ${baht(me.debt)} เงินที่ได้จะหักหนี้ก่อน`}
             </div>
             <div className="flex gap-2 items-center">
@@ -185,10 +186,10 @@ export function TileSheet({
                 type="number"
                 inputMode="numeric"
                 className="input flex-1 text-lg tabular-nums"
-                value={price}
+                value={priceText}
                 min={1}
                 step={100}
-                onChange={(e) => setPrice(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                onChange={(e) => setPriceText(e.target.value)}
               />
               <span className="text-cocoa/70">฿</span>
             </div>
