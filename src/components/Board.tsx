@@ -56,8 +56,8 @@ export function Board({
   animate: boolean;
   /** the latest action is still playing out: don't mark the tile it ends on yet */
   resultHidden?: boolean;
-  /** tile the 1–12 step numbers count from; undefined hides them */
-  stepsFrom?: number;
+  /** whose piece and tile the 1–12 step numbers count from; undefined hides them */
+  stepsFrom?: { seat: number; tile: number };
   /** replaces the mascot with a decision card (buy, jail, …) */
   overlay?: React.ReactNode;
   /** 3D tilt of the board in degrees (0 = flat) */
@@ -135,7 +135,7 @@ export function Board({
       {/* step numbers sit just inside the ring of tiles, beside each tile instead of on its art */}
       {stepsFrom !== undefined &&
         Array.from({ length: MAX_STEPS }, (_, i) => {
-          const index = (stepsFrom + i + 1) % view.tiles.length;
+          const index = (stepsFrom.tile + i + 1) % view.tiles.length;
           const c = tileCenter(index);
           // corners step diagonally inward, clear of the numbers beside them
           const inset = gridPos(index).corner ? 18.5 : 13.8;
@@ -143,8 +143,8 @@ export function Board({
             <span
               key={i}
               aria-hidden
-              className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 min-w-[1.6em] rounded-full bg-cocoa text-paper text-center text-[clamp(9px,1.6vw,14px)] font-bold leading-[1.5] tabular-nums pointer-events-none"
-              style={{ left: `${Math.min(100 - inset, Math.max(inset, c.x))}%`, top: `${Math.min(100 - inset, Math.max(inset, c.y))}%` }}
+              className="absolute z-[2] -translate-x-1/2 -translate-y-1/2 min-w-[1.6em] rounded-full text-[#2a1d14] text-center text-[clamp(9px,1.6vw,14px)] font-bold leading-[1.5] tabular-nums pointer-events-none"
+              style={{ left: `${Math.min(100 - inset, Math.max(inset, c.x))}%`, top: `${Math.min(100 - inset, Math.max(inset, c.y))}%`, background: PIECE_COLOR[view.players[stepsFrom.seat].variant] }}
             >
               {i + 1}
             </span>

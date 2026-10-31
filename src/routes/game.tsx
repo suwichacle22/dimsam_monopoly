@@ -404,9 +404,11 @@ function Game({ token }: { token: string }) {
   const busy = rolling || walking;
   const myTurn = !!view && view.game.turn === view.me && view.game.status === "playing";
   const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll"].includes(view!.game.phase);
-  // step numbers keep counting from where the turn began until it is over, or this player gets another roll
-  const stepsAnchor = useRef<number | undefined>(undefined);
-  if (view && me && revealedAt === view.game.actionAt && !busy && (!myTurn || ["roll", "jail", "card_roll"].includes(view.game.phase))) stepsAnchor.current = me.position;
+  // step numbers count from the active player and hold still until the next roll is due, so they stay put through a turn
+  const stepsAnchor = useRef<{ seat: number; tile: number } | undefined>(undefined);
+  if (view && revealedAt === view.game.actionAt && !busy && ["roll", "jail", "card_roll"].includes(view.game.phase)) {
+    stepsAnchor.current = { seat: view.game.turn, tile: view.players[view.game.turn].position };
+  }
 
   // Space: in the normal roll phase hold-to-aim drives the gauge; elsewhere a plain roll. Escape closes sheets.
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -488,7 +490,7 @@ function Game({ token }: { token: string }) {
           rolling={rolling}
           animate
           resultHidden={resultHidden}
-          stepsFrom={showSteps ? stepsAnchor.current ?? me?.position : undefined}
+          stepsFrom={showSteps ? stepsAnchor.current ?? { seat: view.game.turn, tile: view.players[view.game.turn].position } : undefined}
           tilt={tilt3d ? 14 : 0}
           fx={fx}
           callout={callout}
@@ -531,7 +533,7 @@ function Game({ token }: { token: string }) {
           </button>
           <button
             className="px-2 py-1 rounded-lg border border-cocoa/20"
-            title="แสดงจำนวนก้าว 1–12 จากตัวคุณบนกระดาน"
+            title="แสดงจำนวนก้าว 1–12 จากตัวผู้เล่นที่ถึงตา"
             onClick={() => {
               const next = !showSteps;
               setShowSteps(next);
