@@ -72,9 +72,7 @@ export function Decision({ view, disabled, actions, spaceHeld }: { view: GameVie
           <Btn
             tone="red"
             disabled={disabled || me.cash < r.jailFine}
-            onClick={() => {
-              if (confirm(`จ่ายค่าไถ่ ${baht(r.jailFine)} เพื่อออกจากอ่างอาบน้ำเลยไหม?`)) actions.payJail();
-            }}
+            onClick={actions.payJail}
             label="จ่ายค่าไถ่ ออกเลย"
             amount={baht(r.jailFine)}
           />
