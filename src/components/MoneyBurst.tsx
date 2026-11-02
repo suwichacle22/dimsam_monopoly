@@ -32,7 +32,7 @@ export function MoneyBurst({ burst, onDone }: { burst: Burst; onDone: () => void
   const win = tone === "win";
   const tab = tone === "tab";
   return (
-    <div className={cx("fixed inset-0 z-[60] pointer-events-none flex items-center justify-center", win ? "burst-win" : tab ? "burst-tab" : "burst-lose")}>
+    <div key={shown.id} className={cx("fixed inset-0 z-[60] pointer-events-none flex items-center justify-center", win ? "burst-win" : tab ? "burst-tab" : "burst-lose")}>
       <div className={cx("absolute inset-0 backdrop-blur-[2px]", win ? "bg-[#ffd66b]/30" : tab ? "bg-[#f08a2b]/20" : "bg-[#d9487e]/25")} />
       {/* raining coins (prize) or coins flying away (penalty) */}
       {!tab && Array.from({ length: 22 }).map((_, i) => (

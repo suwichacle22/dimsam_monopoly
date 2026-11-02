@@ -27,7 +27,7 @@ const ICON: Record<string, string> = {
 
 export function EventLog({ view, resultHidden, className }: { view: GameView; resultHidden?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const shown = view.events.filter((e) => e.kind !== "card_money" && e.kind !== "rent" && e.kind !== "pass_start" && e.kind !== "tax" && e.kind !== "sale" && !(resultHidden && e.at === view.game.actionAt));
+  const shown = view.events.filter((e) => e.kind !== "card_money" && e.kind !== "rent" && e.kind !== "pass_start" && e.kind !== "tax" && e.kind !== "sale" && e.kind !== "txn" && !(resultHidden && e.at === view.game.actionAt));
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: "smooth" });
   }, [shown.length]);

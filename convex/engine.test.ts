@@ -390,6 +390,7 @@ describe("cards", () => {
     E.roll(s, 0);
     expect(s.players[0].cash).toBe(30500);
     expect(s.players[1].cash).toBe(29500);
+    expect(s.events.filter((e) => e.kind === "txn").map((e) => JSON.parse(e.text))).toEqual([{ type: "collect", amount: 500, from: 1, to: 0 }]);
   });
 
   test("a go-to-jail card with a cost charges on the way to the tub", () => {
@@ -791,6 +792,37 @@ describe("aim gauge", () => {
     c.game.pending = { kind: "card_roll", effect: { kind: "roll_threshold", threshold: 6, amount: 100 }, text: "x" };
     E.roll(c, 0, 8);
     expect(c.game.dice).toEqual([1, 2]);
+  });
+});
+
+describe("money moves the client animates", () => {
+  const txns = (s: E.Snapshot) => s.events.filter((e) => e.kind === "txn").map((e) => JSON.parse(e.text) as E.Txn);
+
+  test("buying with a house, building, selling and the jail fine each record their amount and tile", () => {
+    const s = makeSnap([1, 2]);
+    E.roll(s, 0);
+    E.buy(s, 0, true);
+    E.sellHouse(s, 0, 3);
+    E.sellLand(s, 0, 3);
+    s.game.phase = "jail";
+    s.players[0].inJail = true;
+    s.players[0].position = 10;
+    E.payJail(s, 0);
+    expect(txns(s)).toEqual([
+      { type: "buy", amount: 800, tile: 3 },
+      { type: "build", amount: 500, tile: 3 },
+      { type: "sell", amount: 250, tile: 3, what: "house" },
+      { type: "sell", amount: 400, tile: 3, what: "land" },
+      { type: "fine", amount: 500, tile: 10 },
+    ]);
+    expect(s.players[0].cash).toBe(30000 - 800 - 500 + 250 + 400 - 500);
+  });
+
+  test("repaying the tab records who paid whom", () => {
+    const s = makeSnap();
+    s.players[0].debt = 3000;
+    E.payDebt(s, 0, 2000);
+    expect(txns(s)).toEqual([{ type: "repay", amount: 2000, from: 0, to: 1 }]);
   });
 });
 

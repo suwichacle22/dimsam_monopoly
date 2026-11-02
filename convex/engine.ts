@@ -94,6 +94,19 @@ function log(s: Snapshot, kind: string, text: string, seat?: number) {
   s.events.push({ seat, kind, text });
 }
 
+/** A money move the client animates: hidden from the log, carries what the log text only spells out. */
+export type Txn =
+  | { type: "buy"; amount: number; tile: number }
+  | { type: "build"; amount: number; tile: number }
+  | { type: "fine"; amount: number; tile: number }
+  | { type: "sell"; amount: number; tile: number; what: "house" | "landmark" | "land" }
+  | { type: "repay"; amount: number; from: number; to: number }
+  | { type: "collect"; amount: number; from: number; to: number };
+
+function txn(s: Snapshot, seat: number, t: Txn) {
+  s.events.push({ seat, kind: "txn", text: JSON.stringify(t) });
+}
+
 export function tileAt(s: Snapshot, index: number): Tile {
   const t = s.tiles.find((x) => x.index === index);
   if (!t) throw new GameError(`ไม่พบช่องที่ ${index}`);
@@ -395,11 +408,11 @@ function applyEffect(s: Snapshot, seat: number, e: CardEffect, text: string) {
     }
     case "collect_each": {
       const a = e.amount ?? 0;
-      s.events.push({ seat, kind: "card_money", text: String(a * s.players.filter((o) => o.seat !== seat && !o.bankrupt).length) });
       for (const o of s.players) {
         if (o.seat === seat || o.bankrupt) continue;
         o.cash -= a;
         p.cash += a;
+        txn(s, seat, { type: "collect", amount: a, from: o.seat, to: seat });
         log(s, "money", `${o.name} จ่าย ${fmt(a)} บาท ให้ ${p.name} (การ์ด)`, o.seat);
       }
       return;
@@ -652,6 +665,7 @@ export function payDebt(s: Snapshot, seat: number, amount?: number) {
   p.cash -= amt;
   p.debt -= amt;
   creditor.cash += amt;
+  txn(s, seat, { type: "repay", amount: amt, from: seat, to: creditor.seat });
   log(s, "repay", `${p.name} ชำระหนี้ให้ ${creditor.name} ${fmt(amt)} บาท${p.debt > 0 ? ` (เหลือ ${fmt(p.debt)})` : " หมดหนี้แล้ว"}`, seat);
 }
 
@@ -667,6 +681,7 @@ export function buy(s: Snapshot, seat: number, withHouse = false) {
   if (p.cash < price + houseCost) throw new GameError("เงินไม่พอ");
   p.cash -= price;
   s.props[tile.index] = { ownerSeat: seat, houses: 0, landmark: false };
+  txn(s, seat, { type: "buy", amount: price, tile: tile.index });
   log(s, "buy", `${p.name} ซื้อ ${tile.name} ราคา ${fmt(price)} บาท`, seat);
   g.pending = undefined;
   g.phase = "end";
@@ -688,6 +703,7 @@ export function payJail(s: Snapshot, seat: number) {
   p.cash -= s.rules.jailFine;
   p.inJail = false;
   p.jailTurns = 0;
+  txn(s, seat, { type: "fine", amount: s.rules.jailFine, tile: p.position });
   log(s, "jail", `${p.name} จ่ายค่าไถ่ ${fmt(s.rules.jailFine)} บาท ออกจากอ่างอาบน้ำ`, seat);
   s.game.phase = "roll";
 }
@@ -731,6 +747,7 @@ export function build(s: Snapshot, seat: number, tileIndex: number) {
   if (p.cash < cost) throw new GameError("เงินไม่พอ");
   p.cash -= cost;
   s.game.builtThisTurn += 1;
+  txn(s, seat, { type: "build", amount: cost, tile: tileIndex });
   if (toLandmark) {
     prop.landmark = true;
     prop.houses = 0;
@@ -759,6 +776,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
   if (!prop.landmark && prop.houses === 0) throw new GameError("ไม่มีบ้านให้ขาย");
   const r = s.rules;
   let value: number;
+  const what = prop.landmark ? "landmark" : "house";
   if (prop.landmark) {
     prop.landmark = false;
     prop.houses = r.maxHouses;
@@ -770,6 +788,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
     log(s, "sell", `${p.name} ขายบ้าน 1 หลังที่ ${tile.name} ได้ ${fmt(value)} บาท`, seat);
   }
   p.cash += value;
+  txn(s, seat, { type: "sell", amount: value, tile: tileIndex, what });
   afterSale(s, seat);
 }
 
@@ -784,6 +803,7 @@ export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
   const value = landSellValue(s.rules, tile);
   delete s.props[tileIndex];
   p.cash += value;
+  txn(s, seat, { type: "sell", amount: value, tile: tileIndex, what: "land" });
   log(s, "sell", `${p.name} ขาย ${tile.name} คืนธนาคาร ได้ ${fmt(value)} บาท`, seat);
   afterSale(s, seat);
 }

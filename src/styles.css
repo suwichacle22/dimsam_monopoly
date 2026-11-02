@@ -55,6 +55,13 @@ body {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
+/* these animate to opacity 0: at reduced motion they would vanish instantly, so hold them still instead */
+@media (prefers-reduced-motion: reduce) {
+  .burst-win, .burst-lose, .burst-tab, .burst-card, .amount-pop, .callout-card { animation: none !important; }
+  .callout-card { transform: translate(-50%, -110%); }
+  .money-float { display: none; }
+}
+
 @layer components {
   .btn-primary {
     @apply rounded-2xl bg-caramel text-white font-semibold px-5 py-3 text-lg shadow-[0_4px_0_#b9803a] active:translate-y-[2px] active:shadow-[0_2px_0_#b9803a] transition disabled:opacity-40 disabled:shadow-none disabled:translate-y-0;
@@ -121,7 +128,15 @@ body {
   15% { opacity: 1; }
   100% { transform: translateY(-40px); opacity: 0; }
 }
-.money-float { animation: money-float 1.4s ease-out both; }
+.money-float { animation: money-float 1.4s ease-out both; pointer-events: none; }
+
+/* a balance that just changed swells and flashes its colour */
+@keyframes cash-up { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.22); color: #2e8b2e; } 70% { color: #2e8b2e; } }
+@keyframes cash-down { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.22); color: var(--color-berry); } 70% { color: var(--color-berry); } }
+.cash-up { animation: cash-up 1s ease-out; }
+.cash-down { animation: cash-down 1s ease-out; }
+.dark .cash-up { animation-name: cash-up-dark; }
+@keyframes cash-up-dark { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.22); color: #8fe08f; } 70% { color: #8fe08f; } }
 
 @layer components {
   .input {
@@ -249,6 +264,9 @@ body {
 .callout-amount { font-weight: 800; font-size: clamp(16px, 3.6vw, 30px); line-height: 1.05; font-variant-numeric: tabular-nums; }
 .callout-sub { font-weight: 600; font-size: clamp(10px, 1.8vw, 14px); color: #b8900a; margin-top: 2px; }
 .dark .callout-sub { color: #f5c518; }
+.callout-lose { background: #fff0f4; color: var(--color-berry); border-color: var(--color-berry); box-shadow: 0 6px 0 #a22d5a, 0 10px 24px rgba(0,0,0,.35); }
+.dark .callout-lose { background: #361620; color: var(--color-berry); }
+.callout-lose .callout-sub, .dark .callout-lose .callout-sub { color: inherit; }
 @keyframes callout-pop {
   0% { opacity: 0; transform: translate(-50%, -80%) scale(.5); }
   14% { opacity: 1; transform: translate(-50%, -110%) scale(1.12); }

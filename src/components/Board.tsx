@@ -24,7 +24,7 @@ export function tileCenter(index: number): { x: number; y: number } {
 
 export type TileFx = { index: number; kind: "land" | "buy" | "build"; key: number };
 /** one-shot badge popping out of a tile, e.g. "+2,000 ผ่านบ้าน" */
-export type Callout = { index: number; text: string; sub?: string; key: number };
+export type Callout = { index: number; text: string; sub?: string; tone?: "win" | "lose"; key: number };
 
 const PIECE_COLOR = { blue: "#4fa7e8", pink: "#f06aa8" } as const;
 /** highest two-dice total, the furthest a single roll can reach */
@@ -162,7 +162,7 @@ export function Board({
             className="callout absolute pointer-events-none z-[7]"
             style={{ left: `${x}%`, top: `${y}%`, transform: tilt ? `rotateX(calc(-1 * var(--tilt)))` : undefined, transformOrigin: "50% 100%" }}
           >
-            <div className="callout-card">
+            <div className={cx("callout-card", callout.tone === "lose" && "callout-lose")}>
               <div className="callout-amount">{callout.text}</div>
               {callout.sub && <div className="callout-sub">{callout.sub}</div>}
             </div>

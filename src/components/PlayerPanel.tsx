@@ -17,8 +17,33 @@ function useCashFloat(cash: number) {
   return float;
 }
 
-function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerView; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
-  const float = useCashFloat(p.cash);
+/** Eases the printed number to its new value, so a balance change reads as money moving. */
+function useCountUp(value: number) {
+  const [printed, setPrinted] = useState(value);
+  const at = useRef(value);
+  useEffect(() => {
+    if (at.current === value) return;
+    const from = at.current;
+    const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t0 = performance.now();
+    let id = requestAnimationFrame(function tick(now) {
+      const k = instant ? 1 : Math.min(1, (now - t0) / 700);
+      at.current = Math.round(from + (value - from) * (1 - (1 - k) ** 3));
+      setPrinted(at.current);
+      if (k < 1) id = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [value]);
+  return printed;
+}
+
+function PlayerCard({ view, p, shown, onTile, onPayDebt }: { view: GameView; p: PlayerView; shown?: { cash: number; debt: number }; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
+  // while an action plays out the balances follow the animation, not the server
+  const cash = shown?.cash ?? p.cash;
+  const debt = shown?.debt ?? p.debt;
+  const float = useCashFloat(cash);
+  const debtFloat = useCashFloat(debt);
+  const printedCash = useCountUp(cash);
   const isTurn = view.game.turn === p.seat && view.game.status === "playing";
   const owned = view.props.filter((x) => x.ownerSeat === p.seat).map((x) => view.tiles.find((t) => t.index === x.tileIndex)!);
   const w = wealth(view, p.seat);
@@ -35,11 +60,13 @@ function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerV
             <span className={cx("w-2 h-2 rounded-full", p.online ? "bg-grass-deep bg-[#6fae4b]" : "bg-cocoa/20")} title={p.online ? "ออนไลน์" : "ออฟไลน์"} />
           </div>
           <div className="relative text-lg font-bold tabular-nums text-cocoa">
-            {baht(p.cash)}
+            <span key={`cash-${float?.key}`} className={cx("inline-block origin-left", float && (float.diff > 0 ? "cash-up" : "cash-down"))}>
+              {baht(printedCash)}
+            </span>
             {float && (
               <span
                 key={float.key}
-                className={cx("money-float absolute left-0 -top-1 text-sm font-semibold", float.diff > 0 ? "text-[#3f8f3f]" : "text-berry")}
+                className={cx("money-float absolute left-0 -top-2 text-base font-bold", float.diff > 0 ? "text-[#3f8f3f] dark:text-[#8fe08f]" : "text-berry")}
               >
                 {float.diff > 0 ? "+" : ""}
                 {float.diff.toLocaleString()}
@@ -61,13 +88,19 @@ function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerV
           ขายคืนได้ <b className="text-cocoa">{baht(w.sellable)}</b>
         </span>
         <span title="เงินสด + ทรัพย์สิน − หนี้" className="ml-auto">
-          รวม <b className="text-cocoa">{baht(p.cash + w.assets - p.debt)}</b>
+          รวม <b className="text-cocoa">{baht(cash + w.assets - debt)}</b>
         </span>
       </div>
-      {p.debt > 0 && (
-        <div className="flex items-center gap-2 text-[12px] bg-[#fff1e6] dark:bg-[#3a2416] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
+      {debt > 0 && (
+        <div className="relative flex items-center gap-2 text-[12px] bg-[#fff1e6] dark:bg-[#3a2416] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
           <span className="text-[#b8621a]">
-            ติดหนี้ <b>{view.players.find((o) => o.seat !== p.seat)?.name}</b> <b className="tabular-nums">{baht(p.debt)}</b>
+            ติดหนี้ <b>{view.players.find((o) => o.seat !== p.seat)?.name}</b> <b className="tabular-nums">{baht(debt)}</b>
+            {debtFloat && (
+              <span key={debtFloat.key} className="money-float absolute left-2 -top-2 font-bold text-[#b8621a] dark:text-[#ffb070]">
+                {debtFloat.diff > 0 ? "+" : ""}
+                {debtFloat.diff.toLocaleString()}
+              </span>
+            )}
           </span>
           {p.seat === view.me && onPayDebt && (
             <span className="ml-auto flex gap-1">
@@ -115,11 +148,11 @@ function PlayerCard({ view, p, onTile, onPayDebt }: { view: GameView; p: PlayerV
   );
 }
 
-export function PlayerPanel({ view, onTile, onPayDebt }: { view: GameView; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
+export function PlayerPanel({ view, shown, onTile, onPayDebt }: { view: GameView; shown?: { cash: number[]; debt: number[] }; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
       {view.players.map((p) => (
-        <PlayerCard key={p.seat} view={view} p={p} onTile={onTile} onPayDebt={onPayDebt} />
+        <PlayerCard key={p.seat} view={view} p={p} shown={shown && { cash: shown.cash[p.seat], debt: shown.debt[p.seat] }} onTile={onTile} onPayDebt={onPayDebt} />
       ))}
     </div>
   );

@@ -17,6 +17,7 @@ import { CardToast } from "~/components/CardToast";
 import { TileSheet } from "~/components/TileSheet";
 import { Decision } from "~/components/Decision";
 import type { GameView, TileView } from "~/lib/game";
+import type { Txn } from "../../convex/engine";
 import { buildBlocker, buildCost } from "~/lib/game";
 import { setSession, useSession } from "~/lib/session";
 import { cx, errorMessage } from "~/lib/format";
@@ -29,6 +30,16 @@ export const Route = createFileRoute("/game")({ component: GamePage });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const STEP_MS = 230;
 const ROLL_MS = 1000;
+/** full-screen money card; matches the fade in MoneyBurst, plus a beat so two in a row read as two */
+const BURST_MS = 2450;
+/** tile badge and coins for a purchase, build, sale or fine */
+const BADGE_MS = 1000;
+const fmtBaht = (n: number) => `${n > 0 ? "+" : "-"}${Math.abs(n).toLocaleString()} ฿`;
+
+type CoinEnd = { tile: number } | { seat: number };
+/** the balances on screen: they follow the choreography, not the server */
+type Ledger = { cash: number[]; debt: number[] };
+const ledgerOf = (v: GameView): Ledger => ({ cash: v.players.map((p) => p.cash), debt: v.players.map((p) => p.debt) });
 
 function GamePage() {
   const session = useSession();
@@ -101,9 +112,9 @@ function Game({ token }: { token: string }) {
   const [fx, setFx] = useState<TileFx[]>([]);
   const [callout, setCallout] = useState<Callout | null>(null);
   const calloutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showCallout = (index: number, text: string, sub?: string) => {
+  const showCallout = (index: number, text: string, sub?: string, tone: Callout["tone"] = "win") => {
     if (calloutTimer.current) clearTimeout(calloutTimer.current);
-    setCallout({ index, text, sub, key: ++fxKey.current });
+    setCallout({ index, text, sub, tone, key: ++fxKey.current });
     calloutTimer.current = setTimeout(() => setCallout(null), 2600);
   };
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -115,14 +126,40 @@ function Game({ token }: { token: string }) {
     setFx((list) => [...list.filter((f) => f.index !== index), { index, kind, key }]);
     setTimeout(() => setFx((list) => list.filter((f) => f.key !== key)), 1800);
   };
-  const flyCoins = (fromTile: number, toSeat: number, n: number) => {
-    const from = document.querySelector<HTMLElement>(`[data-tile="${fromTile}"]`)?.getBoundingClientRect();
-    const to = document.querySelector<HTMLElement>(`[data-seat="${toSeat}"]`)?.getBoundingClientRect();
+  const coinPoint = (end: CoinEnd) => {
+    const r = document.querySelector<HTMLElement>("tile" in end ? `[data-tile="${end.tile}"]` : `[data-seat="${end.seat}"]`)?.getBoundingClientRect();
+    if (!r) return null;
+    const p = "tile" in end ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: r.left + 40, y: r.top + 30 };
+    // on a phone the player cards sit below the board: head for the screen edge instead of flying out of sight
+    return { x: Math.min(window.innerWidth - 12, Math.max(12, p.x)), y: Math.min(window.innerHeight - 12, Math.max(12, p.y)) };
+  };
+  const flyCoins = (fromEnd: CoinEnd, toEnd: CoinEnd, n: number) => {
+    const from = coinPoint(fromEnd);
+    const to = coinPoint(toEnd);
     if (!from || !to) return;
     const id = ++fxKey.current;
-    setFlights((f) => [...f, { id, n, from: { x: from.left + from.width / 2, y: from.top + from.height / 2 }, to: { x: to.left + 40, y: to.top + 30 } }]);
+    setFlights((f) => [...f, { id, n, from, to }]);
     setTimeout(() => setFlights((f) => f.filter((x) => x.id !== id)), 1400);
   };
+  const [ledger, setLedger] = useState<Ledger>({ cash: [], debt: [] });
+  const ledgerRef = useRef(ledger);
+  const syncLedger = (next: Ledger) => {
+    ledgerRef.current = next;
+    setLedger(next);
+  };
+  const moveMoney = (seat: number, cash: number, debt = 0) => {
+    const { cash: c, debt: d } = ledgerRef.current;
+    syncLedger({ cash: c.map((x, s) => (s === seat ? x + cash : x)), debt: d.map((x, s) => (s === seat ? x + debt : x)) });
+  };
+  // the last action that has finished playing; until it catches up with the server the game waits for the show
+  const [settledAt, setSettledAt] = useState<number | null>(null);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   useEffect(() => {
     setTilt3d(localStorage.getItem("dimsam.3d") !== "0" && window.matchMedia("(prefers-reduced-motion: no-preference)").matches);
     setMutedState(isMuted());
@@ -142,7 +179,10 @@ function Game({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // choreography: when a new server action arrives, play dice → walk → card
+  // choreography: every new server action plays dice → walk → card → money, one action at a time, so a
+  // later action (the other phone repaying, a fast end-turn) waits its turn instead of cutting this one off
+  const queue = useRef<{ v: GameView; since: number }[]>([]);
+  const draining = useRef(false);
   const actionAt = view?.game.actionAt;
   useEffect(() => {
     const v = viewRef.current;
@@ -152,154 +192,205 @@ function Game({ token }: { token: string }) {
       setDisplayPos(v.players.map((p) => p.position));
       setDiceShown(v.game.dice);
       setRevealedAt(actionAt);
+      setSettledAt(actionAt);
+      syncLedger(ledgerOf(v));
       return;
     }
     if (lastActionRef.current === actionAt) return;
+    queue.current.push({ v, since: lastActionRef.current });
     lastActionRef.current = actionAt;
+    void drain();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionAt]);
 
-    const fresh = v.events.filter((e) => e.at === actionAt);
+  async function drain() {
+    if (draining.current) return;
+    draining.current = true;
+    while (queue.current.length) {
+      const { v, since } = queue.current.shift()!;
+      try {
+        // a hidden tab or a long backlog jumps to the result instead of replaying old news
+        if (!document.hidden && queue.current.length < 3) await playAction(v, since);
+      } catch (e) {
+        console.error(e);
+      }
+      if (!alive.current) return;
+      setRolling(false);
+      setWalking(false);
+      setDisplayPos(v.players.map((p) => p.position));
+      setDiceShown(v.game.dice);
+      setRevealedAt(v.game.actionAt);
+      syncLedger(ledgerOf(v));
+      setSettledAt(v.game.actionAt);
+    }
+    draining.current = false;
+  }
+
+  async function playAction(v: GameView, since: number) {
+    // "since", not "this action": two quick mutations can reach the client as one update
+    const fresh = v.events.filter((e) => e.at > since);
     const rolled = fresh.some((e) => e.kind === "roll");
     const moves = v.game.moves;
-    const cardNow = v.game.lastCard && v.game.lastCard.at === actionAt ? v.game.lastCard : null;
-    const finalPos = v.players.map((p) => p.position);
+    const cardNow = v.game.lastCard && v.game.lastCard.at > since ? v.game.lastCard : null;
     const startTile = v.tiles.find((t) => t.type === "start")?.index ?? 0;
-    const passed = new Set(fresh.filter((e) => e.kind === "pass_start").map((e) => e.seat).filter((x): x is number => x !== undefined));
+    const passes = fresh.filter((e) => e.kind === "pass_start");
     const passStartBonus = (seat: number) => {
-      if (!passed.has(seat)) return;
-      passed.delete(seat);
-      const amt = Number(fresh.find((e) => e.kind === "pass_start" && e.seat === seat)?.text ?? 0);
+      const i = passes.findIndex((e) => e.seat === seat);
+      if (i < 0) return;
+      const amt = Number(passes.splice(i, 1)[0].text);
       showCallout(startTile, `+${amt.toLocaleString()} ฿`, "ผ่านบ้านติ่มซำ 🏠");
-      flyCoins(startTile, seat, 5);
+      flyCoins({ tile: startTile }, { seat }, 5);
+      moveMoney(seat, amt);
       play("cash");
     };
     const n = v.tiles.length;
-    let cancelled = false;
 
-    (async () => {
-      if (rolled) {
-        setRolling(true);
-        play("roll");
-        await sleep(ROLL_MS);
-        if (cancelled) return;
-        setDiceShown(v.game.dice);
-        setRolling(false);
-      }
-      if (moves.length) setWalking(true);
-      for (let i = 0; i < moves.length; i++) {
-        const mv = moves[i];
-        if (mv.teleport) {
-          await sleep(250);
-          if (cancelled) return;
-          setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? mv.to : p)));
+    if (rolled) {
+      setRolling(true);
+      play("roll");
+      await sleep(ROLL_MS);
+      if (!alive.current) return;
+      setDiceShown(v.game.dice);
+      setRolling(false);
+    }
+    if (moves.length) setWalking(true);
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      if (mv.teleport) {
+        await sleep(250);
+        if (!alive.current) return;
+        setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? mv.to : p)));
+        setHop((h) => h + 1);
+        pushFx(mv.to, "land");
+        passStartBonus(mv.seat);
+        await sleep(450);
+      } else {
+        const fwd = (mv.to - mv.from + n) % n;
+        const back = (mv.from - mv.to + n) % n;
+        const dir = back < fwd ? -1 : 1;
+        const steps = dir === 1 ? fwd : back;
+        let pos = mv.from;
+        for (let k = 0; k < steps; k++) {
+          pos = (pos + dir + n) % n;
+          const next = pos;
+          setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? next : p)));
           setHop((h) => h + 1);
-          pushFx(mv.to, "land");
-          passStartBonus(mv.seat);
-          await sleep(450);
-        } else {
-          const fwd = (mv.to - mv.from + n) % n;
-          const back = (mv.from - mv.to + n) % n;
-          const dir = back < fwd ? -1 : 1;
-          const steps = dir === 1 ? fwd : back;
-          let pos = mv.from;
-          for (let k = 0; k < steps; k++) {
-            pos = (pos + dir + n) % n;
-            const next = pos;
-            setDisplayPos((prev) => prev.map((p, s) => (s === mv.seat ? next : p)));
-            setHop((h) => h + 1);
-            play("step");
-            if (next === startTile) passStartBonus(mv.seat);
-            await sleep(STEP_MS);
-            if (cancelled) return;
-          }
-          pushFx(mv.to, "land");
+          play("step");
+          if (next === startTile) passStartBonus(mv.seat);
+          await sleep(STEP_MS);
+          if (!alive.current) return;
         }
-        if (i === 0 && cardNow) {
-          await sleep(300);
-          if (cancelled) return;
-          setCard(cardNow);
-          play("card");
-          await sleep(2600);
-          if (cancelled) return;
-        }
+        pushFx(mv.to, "land");
       }
-      if (!moves.length && cardNow) {
+      if (i === 0 && cardNow) {
+        await sleep(300);
+        if (!alive.current) return;
         setCard(cardNow);
         play("card");
+        await sleep(2600);
+        if (!alive.current) return;
       }
-      setDisplayPos(finalPos);
-      setWalking(false);
-      setRevealedAt(actionAt);
-      for (const seat of [...passed]) passStartBonus(seat); // safety: a pass we did not see while stepping
-      // card prize / penalty burst (both phones see it, from the card-drawer's point of view)
-      const cardMoney = fresh.filter((e) => e.kind === "card_money");
-      if (cardMoney.length) {
-        const seat = cardMoney[0].seat!;
-        const net = cardMoney.reduce((a, e) => a + Number(e.text), 0);
-        if (net !== 0) {
-          if (cardNow) await sleep(600);
-          if (cancelled) return;
-          setCard(null);
-          const p = v.players[seat];
-          setBurst({
-            id: actionAt,
-            amount: net,
-            label: net > 0 ? `${p.name} ได้รางวัล!` : `${p.name} โดนปรับ`,
-            kicker: cardNow?.deck === "special" ? "ถุงของเล่น" : "หีบขนม",
-            variant: p.variant,
-          });
-          play(net > 0 ? "prize" : "penalty");
-          await sleep(2300);
-          if (cancelled) return;
-        }
-      }
-      // land sold between the players (ขายที่ดินให้กัน)
-      const saleEv = fresh.find((e) => e.kind === "sale");
-      if (saleEv) {
-        const t = JSON.parse(saleEv.text) as { from: number; to: number; tile: number; price: number; offset: number; cash: number };
+    }
+    if (!moves.length && cardNow) {
+      setCard(cardNow);
+      play("card");
+    }
+    setDisplayPos(v.players.map((p) => p.position));
+    setWalking(false);
+    setRevealedAt(v.game.actionAt);
+    for (const { seat } of [...passes]) if (seat !== undefined) passStartBonus(seat); // safety: a pass we did not see while stepping
+
+    await playMoney(v, fresh, cardNow);
+    if (!alive.current) return;
+
+    // whatever moved without a beat of its own (should be nothing) still may not change silently
+    for (const p of v.players) {
+      const diff = p.cash - (ledgerRef.current.cash[p.seat] ?? p.cash);
+      if (diff === 0) continue;
+      showCallout(p.position, fmtBaht(diff), p.name, diff > 0 ? "win" : "lose");
+      flyCoins(diff > 0 ? { tile: p.position } : { seat: p.seat }, diff > 0 ? { seat: p.seat } : { tile: p.position }, 5);
+      moveMoney(p.seat, diff);
+      play(diff > 0 ? "cash" : "pay");
+    }
+    if (fresh.some((e) => e.kind === "finish")) play(v.game.winner === v.me ? "win" : "lose");
+    else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
+  }
+
+  /** Plays every money move of an action in the order the engine made them; each one updates the balances on screen as it plays. */
+  async function playMoney(v: GameView, fresh: GameView["events"], cardNow: GameView["game"]["lastCard"] | null) {
+    const tileOf = (i: number) => v.tiles.find((t) => t.index === i);
+    const deckName = v.game.lastCard?.deck === "special" ? "ถุงของเล่น" : "หีบขนม";
+    const who = (seat: number) => (seat === v.me ? "" : `${v.players[seat].name} `);
+    const showBurst = async (b: NonNullable<Burst>, sfx: Parameters<typeof play>[0]) => {
+      setCard(null); // the drawn card makes way for what it did
+      setBurst(b);
+      play(sfx);
+      await sleep(BURST_MS);
+    };
+    const badge = async (seat: number, tile: number, amount: number, sub: string, sfx: Parameters<typeof play>[0]) => {
+      showCallout(tile, fmtBaht(amount), `${who(seat)}${sub}`, amount > 0 ? "win" : "lose");
+      flyCoins(amount > 0 ? { tile } : { seat }, amount > 0 ? { seat } : { tile }, 6);
+      moveMoney(seat, amount);
+      play(sfx);
+      await sleep(BADGE_MS);
+    };
+    let cardDone = false;
+    let waitedForCard = !cardNow;
+    const letCardRead = async () => {
+      if (!waitedForCard) await sleep(600);
+      waitedForCard = true;
+    };
+    for (const e of fresh) {
+      if (!alive.current) return;
+      if (e.kind === "card_money" && !cardDone) {
+        cardDone = true;
+        const seat = e.seat!;
+        const net = fresh.filter((x) => x.kind === "card_money").reduce((a, x) => a + Number(x.text), 0);
+        if (net === 0) continue;
+        await letCardRead();
+        if (!alive.current) return;
+        const p = v.players[seat];
+        const tile = { tile: p.position };
+        flyCoins(net > 0 ? tile : { seat }, net > 0 ? { seat } : tile, 8);
+        moveMoney(seat, net);
+        await showBurst({ id: ++fxKey.current, amount: net, label: net > 0 ? `${p.name} ได้รางวัล!` : `${p.name} โดนปรับ`, kicker: deckName, variant: p.variant }, net > 0 ? "prize" : "penalty");
+      } else if (e.kind === "sale") {
+        // land sold between the players (ขายที่ดินให้กัน)
+        const t = JSON.parse(e.text) as { from: number; to: number; tile: number; price: number; offset: number; cash: number };
         const seller = v.players[t.from];
         const buyer = v.players[t.to];
-        const tile = v.tiles.find((x) => x.index === t.tile);
+        const tile = tileOf(t.tile);
         const bits = [t.offset > 0 ? `หักหนี้ ${t.offset.toLocaleString()}` : "", t.cash > 0 ? `จ่ายสด ${t.cash.toLocaleString()}` : ""].filter(Boolean).join(" · ");
-        setBurst({
-          id: actionAt + 3,
-          amount: t.to === v.me ? -t.price : t.price,
-          tone: "tab",
-          label: t.to === v.me ? `คุณซื้อ ${tile?.name ?? ""} จาก ${seller.name}` : `${buyer.name} ซื้อ ${tile?.name ?? ""} จากคุณ`,
-          kicker: "ซื้อขายที่ดิน 🤝",
-          detail: bits || undefined,
-          variant: t.to === v.me ? buyer.variant : seller.variant,
-        });
-        play("cash");
+        if (t.cash > 0) flyCoins({ seat: t.to }, { seat: t.from }, 6);
+        moveMoney(t.to, -t.cash);
+        moveMoney(t.from, t.cash, -t.offset);
         if (tile) pushFx(tile.index, "buy");
-        await sleep(2300);
-        if (cancelled) return;
-      }
-      // tax tile burst (ค่าหาหมอ, ค่าอาบน้ำตัดขน): the money just vanishes, so show it clearly
-      const taxEv = fresh.find((e) => e.kind === "tax");
-      if (taxEv && taxEv.seat !== undefined) {
-        const t = JSON.parse(taxEv.text) as { amount: number; tile: number };
-        const payer = v.players[taxEv.seat];
-        const tile = v.tiles.find((x) => x.index === t.tile);
-        setBurst({
-          id: actionAt + 2,
-          amount: -t.amount,
-          tone: "lose",
-          label: `${payer.name} จ่าย${tile?.name ?? "ค่าใช้จ่าย"}`,
-          kicker: tile?.name ?? "ค่าใช้จ่าย",
-          detail: tile?.blurb,
-          variant: payer.variant,
-        });
-        play("penalty");
-        await sleep(2300);
-        if (cancelled) return;
-      }
-      // rent burst: shown from this phone's point of view (payer loses, owner gains, or it goes on the tab)
-      const rentEv = fresh.find((e) => e.kind === "rent");
-      if (rentEv && rentEv.seat !== undefined) {
-        const r = JSON.parse(rentEv.text) as { to: number; amount: number; tile: number; landmark: boolean; houses: number; cash: number; offset: number; tabbed: number };
-        const payer = v.players[rentEv.seat];
+        await showBurst(
+          {
+            id: ++fxKey.current,
+            amount: t.to === v.me ? -t.price : t.price,
+            tone: "tab",
+            label: t.to === v.me ? `คุณซื้อ ${tile?.name ?? ""} จาก ${seller.name}` : `${buyer.name} ซื้อ ${tile?.name ?? ""} จากคุณ`,
+            kicker: "ซื้อขายที่ดิน 🤝",
+            detail: bits || undefined,
+            variant: t.to === v.me ? buyer.variant : seller.variant,
+          },
+          "cash",
+        );
+      } else if (e.kind === "tax" && e.seat !== undefined) {
+        // tax tile (ค่าหาหมอ, ค่าอาบน้ำตัดขน): the money just vanishes, so show it clearly
+        const t = JSON.parse(e.text) as { amount: number; tile: number };
+        const payer = v.players[e.seat];
+        const tile = tileOf(t.tile);
+        flyCoins({ seat: e.seat }, { tile: t.tile }, 6);
+        moveMoney(e.seat, -t.amount);
+        await showBurst({ id: ++fxKey.current, amount: -t.amount, tone: "lose", label: `${payer.name} จ่าย${tile?.name ?? "ค่าใช้จ่าย"}`, kicker: tile?.name ?? "ค่าใช้จ่าย", detail: tile?.blurb, variant: payer.variant }, "penalty");
+      } else if (e.kind === "rent" && e.seat !== undefined) {
+        // rent: shown from this phone's point of view (payer loses, owner gains, or it goes on the tab)
+        const r = JSON.parse(e.text) as { to: number; amount: number; tile: number; landmark: boolean; houses: number; cash: number; offset: number; tabbed: number };
+        const payer = v.players[e.seat];
         const owner = v.players[r.to];
-        const tile = v.tiles.find((t) => t.index === r.tile);
+        const tile = tileOf(r.tile);
         const iOwn = r.to === v.me;
         const what = r.landmark ? "แลนด์มาร์ก ★" : r.houses > 0 ? `บ้าน ${r.houses} หลัง` : tile?.type === "station" ? "ร้าน" : tile?.type === "special_item" ? "ของเล่น" : "ที่ดิน";
         const onTab = r.offset > 0 || r.tabbed > 0;
@@ -307,51 +398,68 @@ function Game({ token }: { token: string }) {
         if (r.offset > 0) bits.push(`หักหนี้ ${r.offset.toLocaleString()}`);
         if (r.tabbed > 0) bits.push(`ติดไว้ ${r.tabbed.toLocaleString()}`);
         if (r.cash > 0) bits.push(`จ่ายสด ${r.cash.toLocaleString()}`);
-        setBurst({
-          id: actionAt + 1,
-          amount: iOwn ? r.amount : -r.amount,
-          tone: onTab ? "tab" : iOwn ? "win" : "lose",
-          label: onTab ? (iOwn ? `${payer.name} ติดค่าเช่าไว้ก่อน` : `ติด ${owner.name} ไว้ก่อน`) : iOwn ? `${payer.name} มาจ่ายค่าเช่า` : `จ่ายค่าเช่าให้ ${owner.name}`,
-          kicker: `ค่าเช่า ${tile?.name ?? ""}`,
-          detail: `${what}${r.landmark ? " · ค่าเช่าสูงสุด!" : ""}${onTab ? ` · ${bits.join(" · ")}` : ""}`,
-          variant: iOwn ? owner.variant : payer.variant,
-        });
-        play(onTab ? "tab" : iOwn ? "prize" : "penalty");
-        await sleep(2300);
-        if (cancelled) return;
-      }
-      // outcome effects, once the piece has arrived
-      const mine = (e: { seat?: number }) => e.seat === v.me;
-      for (const e of fresh) {
-        const pos = e.seat !== undefined ? v.players[e.seat]?.position : undefined;
-        if (pos === undefined) continue;
-        if (e.kind === "buy" && !e.text.includes("ไม่ซื้อ")) pushFx(pos, "buy");
-        if (e.kind === "build") pushFx(pos, "build");
-        if (e.kind === "money" && e.text.includes("ค่าเช่า")) {
-          const owner = v.props.find((p) => p.tileIndex === pos)?.ownerSeat;
-          if (owner !== undefined) flyCoins(pos, owner, 6);
+        if (r.cash > 0) flyCoins({ seat: e.seat }, { seat: r.to }, 6);
+        moveMoney(e.seat, -r.cash, r.tabbed);
+        moveMoney(r.to, r.cash, -r.offset);
+        await showBurst(
+          {
+            id: ++fxKey.current,
+            amount: iOwn ? r.amount : -r.amount,
+            tone: onTab ? "tab" : iOwn ? "win" : "lose",
+            label: onTab ? (iOwn ? `${payer.name} ติดค่าเช่าไว้ก่อน` : `ติด ${owner.name} ไว้ก่อน`) : iOwn ? `${payer.name} มาจ่ายค่าเช่า` : `จ่ายค่าเช่าให้ ${owner.name}`,
+            kicker: `ค่าเช่า ${tile?.name ?? ""}`,
+            detail: `${what}${r.landmark ? " · ค่าเช่าสูงสุด!" : ""}${onTab ? ` · ${bits.join(" · ")}` : ""}`,
+            variant: iOwn ? owner.variant : payer.variant,
+          },
+          onTab ? "tab" : iOwn ? "prize" : "penalty",
+        );
+      } else if (e.kind === "txn" && e.seat !== undefined) {
+        const t = JSON.parse(e.text) as Txn;
+        if (t.type === "buy") {
+          pushFx(t.tile, "buy");
+          await badge(e.seat, t.tile, -t.amount, `ซื้อ ${tileOf(t.tile)?.name ?? ""}`, "buy");
+        } else if (t.type === "build") {
+          pushFx(t.tile, "build");
+          const landmark = v.props.find((x) => x.tileIndex === t.tile)?.landmark;
+          await badge(e.seat, t.tile, -t.amount, `สร้าง${landmark ? "แลนด์มาร์ก" : "บ้าน"} ${tileOf(t.tile)?.name ?? ""}`, "build");
+        } else if (t.type === "sell") {
+          const what = t.what === "land" ? "ที่ดิน" : t.what === "landmark" ? "แลนด์มาร์ก" : "บ้าน";
+          await badge(e.seat, t.tile, t.amount, `ขาย${what} ${tileOf(t.tile)?.name ?? ""}`, "cash");
+        } else if (t.type === "fine") {
+          await badge(e.seat, t.tile, -t.amount, "จ่ายค่าไถ่ออกจากอ่าง", "pay");
+        } else {
+          // collect (card) and repay move money between the players: each phone sees its own side
+          const iPay = t.from === v.me;
+          const payer = v.players[t.from];
+          const payee = v.players[t.to];
+          if (t.type === "collect") await letCardRead();
+          if (!alive.current) return;
+          flyCoins({ seat: t.from }, { seat: t.to }, 8);
+          moveMoney(t.from, -t.amount, t.type === "repay" ? -t.amount : 0);
+          moveMoney(t.to, t.amount);
+          const left = ledgerRef.current.debt[t.from] ?? 0;
+          await showBurst(
+            {
+              id: ++fxKey.current,
+              amount: iPay ? -t.amount : t.amount,
+              label: t.type === "repay" ? (iPay ? `ชำระหนี้ให้ ${payee.name}` : `${payer.name} ชำระหนี้ให้คุณ`) : iPay ? `จ่ายให้ ${payee.name}` : `${payer.name} จ่ายให้คุณ`,
+              kicker: t.type === "repay" ? "ชำระหนี้ 💵" : deckName,
+              detail: t.type === "repay" ? (left > 0 ? `เหลือหนี้ ${left.toLocaleString()}` : "หมดหนี้แล้ว") : undefined,
+              variant: iPay ? payer.variant : payee.variant,
+            },
+            iPay ? "penalty" : "prize",
+          );
         }
       }
-      if (fresh.some((e) => e.kind === "finish")) play(v.game.winner === v.me ? "win" : "lose");
-      else if (fresh.some((e) => e.kind === "jail" && e.text.includes("โดนจับ"))) play("jail");
-      else if (fresh.some((e) => e.kind === "build")) play("build");
-      else if (fresh.some((e) => e.kind === "buy" && !e.text.includes("ไม่ซื้อ"))) play("buy");
-      else if (!rentEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("ได้รับ") && !e.text.includes("(การ์ด)") && !e.text.includes("(ผ่านบ้านติ่มซำ)"))) play("cash");
-      else if (!rentEv && !taxEv && fresh.some((e) => e.kind === "money" && mine(e) && e.text.includes("จ่าย") && !e.text.includes("(การ์ด)"))) play("pay");
-    })();
-    return () => {
-      cancelled = true;
-      setRolling(false);
-      setWalking(false);
-      setDisplayPos(finalPos);
-      setDiceShown(v.game.dice);
-    };
-  }, [actionAt]);
+    }
+  }
 
   // solo mode: when it is the bot's turn and nothing is animating, let it act after a short pause
   const botTurn = !!view && view.game.status === "playing" && !!view.players[view.game.turn]?.bot;
   const botOffer = !!view && view.game.status === "playing" && !!view.game.offer && !!view.players[view.game.offer.toSeat]?.bot;
-  const busyNow = rolling || walking || !!burst || !!card;
+  // true from the render that first shows a new action, so no effect or button can slip in before the show starts
+  const showing = !!view && settledAt !== view.game.actionAt;
+  const busyNow = rolling || walking || !!burst || !!card || showing;
   useEffect(() => {
     if (!(botTurn || botOffer) || busyNow) return;
     const id = setTimeout(() => m.botStep({ token }).catch(() => {}), 1100);
@@ -363,7 +471,7 @@ function Game({ token }: { token: string }) {
   // could still build a house where they stand (then they press build or จบตา themselves).
   // A successful land/house purchase or a build always ends the turn.
   const [autoEnding, setAutoEnding] = useState(false);
-  const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !rolling && !walking && !card && !burst && !sheet && !deckSheet && !pendingAction;
+  const settled = !!view && view.game.status === "playing" && view.game.turn === view.me && view.game.phase === "end" && !showing && !rolling && !walking && !card && !burst && !sheet && !deckSheet && !pendingAction;
   const autoEnabled = !!view && view.rules.autoEndTurn && !view.players[view.me]?.bot;
   useEffect(() => {
     if (!settled || !autoEnabled || !view) {
@@ -401,7 +509,7 @@ function Game({ token }: { token: string }) {
   }, []);
 
   const me = view?.players.find((p) => p.seat === view.me);
-  const busy = rolling || walking;
+  const busy = rolling || walking || showing;
   const myTurn = !!view && view.game.turn === view.me && view.game.status === "playing";
   const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll"].includes(view!.game.phase);
   // step numbers count from the active player and hold still until the next roll is due, so they stay put through a turn
@@ -475,7 +583,7 @@ function Game({ token }: { token: string }) {
   };
 
   const decisionPhase = ["buy", "rent", "jail", "card_roll", "world_tour"].includes(view.game.phase);
-  const showDecision = myTurn && !busy && decisionPhase && !sheet;
+  const showDecision = myTurn && !rolling && !walking && !burst && decisionPhase && !sheet;
   const resultHidden = revealedAt !== view.game.actionAt;
 
   return (
@@ -498,14 +606,14 @@ function Game({ token }: { token: string }) {
           onPileClick={(d) => setDeckSheet(d)}
         />
         <CoinFlights flights={flights} />
-        {showDecision && <Decision view={view} disabled={pendingAction} actions={actions} spaceHeld={spaceHeld} />}
+        {showDecision && <Decision view={view} disabled={pendingAction || showing} actions={actions} spaceHeld={spaceHeld} />}
         <MoneyBurst burst={burst} onDone={clearBurst} />
       </section>
       <aside className="w-full lg:w-[380px] flex flex-col gap-3 lg:max-h-[calc(100dvh-2rem)]">
         <OfferCard view={view} busy={pendingAction} onRespond={(accept) => run(() => m.respondOffer({ token, accept }))} onCancel={() => run(() => m.cancelOffer({ token }))} />
-        <ActionPanel view={view} busy={busy} pendingAction={pendingAction} actions={actions} spaceHeld={spaceHeld} autoEnding={autoEnding} />
+        <ActionPanel view={view} busy={rolling || walking} pendingAction={pendingAction || showing} actions={actions} spaceHeld={spaceHeld} autoEnding={autoEnding} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
-        <PlayerPanel view={view} onTile={actions.openTile} onPayDebt={actions.payDebt} />
+        <PlayerPanel view={view} shown={showing ? ledger : undefined} onTile={actions.openTile} onPayDebt={actions.payDebt} />
         {view.players.some((p) => p.bot) && (
           <TestPanel
             view={view}
