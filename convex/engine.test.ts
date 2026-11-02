@@ -99,6 +99,17 @@ describe("rent", () => {
     expect(s.game.phase).toBe("end");
   });
 
+  test("monopoly doubles rent with houses and a landmark too, and only for the full colour", () => {
+    const s = makeSnap();
+    s.props[1] = { ownerSeat: 0, houses: 2, landmark: false };
+    expect(E.rentFor(s, 1, 7)).toBe(300); // one purple tile: table rent
+    s.props[3] = { ownerSeat: 0, houses: 0, landmark: true };
+    expect(E.rentFor(s, 1, 7)).toBe(600);
+    expect(E.rentFor(s, 3, 7)).toBe(9000);
+    s.rules.monopolyDoublesBareRent = false;
+    expect(E.rentFor(s, 1, 7)).toBe(300);
+  });
+
   test("monopoly doubles bare-land rent", () => {
     const s = makeSnap([1, 2]);
     s.props[1] = { ownerSeat: 0, houses: 0, landmark: false };
@@ -203,20 +214,45 @@ describe("jail (bath tub)", () => {
     expect(s.game.phase).toBe("roll");
   });
 
-  test("an arrest (tile 30) has no free release even though a tub landing does", () => {
+  test("an arrest (tile 30) is the same one-turn stay as a tub landing", () => {
     const s = makeSnap([2, 4, 1, 2, 3, 4]);
     s.players[0].position = 24;
-    E.roll(s, 0); // 24 + 6 = 30 → sent to the tub, limit = jailMaxTurns (0)
+    E.roll(s, 0); // 24 + 6 = 30 → sent to the tub
     expect(s.players[0].inJail).toBe(true);
-    expect(s.players[0].jailLimit).toBe(0);
+    expect(s.players[0].jailLimit).toBe(1);
     E.endTurn(s, 0);
     E.roll(s, 1); s.game.phase = "end"; s.game.pending = undefined; s.players[1].skipTurns = 0; E.endTurn(s, 1);
     expect(s.game.phase).toBe("jail");
-    E.roll(s, 0); // 3 + 4, no double → stays, and stays again next time
+    E.roll(s, 0); // 3 + 4, no double → waits this turn out
     E.endTurn(s, 0);
     s.game.phase = "end"; s.game.pending = undefined; s.players[1].skipTurns = 0; E.endTurn(s, 1);
+    expect(s.game.turn).toBe(0);
+    expect(s.players[0].inJail).toBe(false);
+    expect(s.game.phase).toBe("roll");
+  });
+
+  test("a jail card and too many doubles also get the one-turn stay", () => {
+    const card = makeSnap([1, 1]);
+    card.game.treasureDeck = ["jail"];
+    card.cards.push({ id: "jail", deck: "treasure", text: "jail", effect: { kind: "go_to_jail" } });
+    E.roll(card, 0); // 1 + 1 → tile 2, หีบขนม
+    expect(card.players[0].inJail).toBe(true);
+    expect(card.players[0].jailLimit).toBe(1);
+
+    const doubles = makeSnap([1, 1]);
+    doubles.game.doublesCount = doubles.rules.maxDoubles;
+    E.roll(doubles, 0);
+    expect(doubles.players[0].inJail).toBe(true);
+    expect(doubles.players[0].jailLimit).toBe(1);
+  });
+
+  test("with jailMaxTurns 0 an arrest has no free release", () => {
+    const s = makeSnap([2, 4]);
+    s.rules.jailMaxTurns = 0;
+    s.players[0].position = 24;
+    E.roll(s, 0);
     expect(s.players[0].inJail).toBe(true);
-    expect(s.game.phase).toBe("jail");
+    expect(s.players[0].jailLimit).toBe(0);
   });
 
   test("surrender ends the game with the other player as winner", () => {
@@ -261,7 +297,7 @@ describe("jail (bath tub)", () => {
     expect(s.game.lastRollDouble).toBe(false);
   });
 
-  test("by default a failed roll keeps you in jail turn after turn", () => {
+  test("with no free release a failed roll keeps you in jail turn after turn", () => {
     const s = jailed([1, 2, 4, 3, 5, 6]);
     E.roll(s, 0);
     expect(s.players[0].inJail).toBe(true);

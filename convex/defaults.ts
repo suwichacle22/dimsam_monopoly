@@ -175,7 +175,7 @@ export type Rules = {
   startingMoney: number;
   passStartBonus: number;
   jailFine: number;
-  /** turns a player waits in jail before walking out for free */
+  /** arrested (tile 30, a card, too many doubles): failed jail turns before walking out for free; 0 = never */
   jailMaxTurns: number;
   jailOnLanding: boolean;
   jailOnLandingTurns: number;
@@ -190,6 +190,7 @@ export type Rules = {
   buildOnlyOnLandedTile: boolean;
   /** houses (or landmark) a player may buy per landing; 0 = unlimited */
   maxHousesPerTurn: number;
+  /** owning a whole colour doubles all its rent: bare land, houses and landmark */
   monopolyDoublesBareRent: boolean;
   /** must build evenly across a colour group */
   evenBuild: boolean;
@@ -216,7 +217,7 @@ export const DEFAULT_RULES: Rules = {
   startingMoney: 30000,
   passStartBonus: 2000,
   jailFine: 500,
-  jailMaxTurns: 0,
+  jailMaxTurns: 1,
   jailOnLanding: true,
   jailOnLandingTurns: 1,
   maxDoubles: 2,
@@ -243,7 +244,7 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   startingMoney: "เงินเริ่มต้น",
   passStartBonus: "ค่าขนมเมื่อผ่านบ้าน",
   jailFine: "ค่าไถ่ออกจากอ่างอาบน้ำ",
-  jailMaxTurns: "จำนวนตาที่รอในอ่างอาบน้ำก่อนออกฟรี (0 = ไม่มีออกฟรี ต้องทอยเบิ้ลหรือจ่ายค่าไถ่เท่านั้น)",
+  jailMaxTurns: "โดนจับ (ช่อง 30, การ์ด, ทอยเบิ้ลเกิน): ถ้าทอยไม่ได้เบิ้ลและไม่จ่าย รอกี่ตาถึงออกฟรี (0 = ไม่มีออกฟรี)",
   jailOnLanding: "ตกช่องอ่างอาบน้ำแล้วโดนจับเลย (ปิด = แค่แวะผ่าน ไม่โดนจับ)",
   jailOnLandingTurns: "ตกช่องอ่างอาบน้ำ: ถ้าทอยไม่ได้เบิ้ลและไม่จ่าย รอกี่ตาถึงออกฟรี (0 = ไม่มีออกฟรี)",
   maxDoubles: "จำนวนเบิ้ลสูงสุดต่อตา (เกินนี้โดนจับอาบน้ำ)",
@@ -252,7 +253,7 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   requireMonopolyToBuild: "ต้องมีครบสีถึงจะสร้างบ้านได้",
   buildOnlyOnLandedTile: "สร้างบ้านได้เฉพาะช่องที่ยืนอยู่",
   maxHousesPerTurn: "สร้างบ้านได้กี่หลังต่อตา (0 = ไม่จำกัด)",
-  monopolyDoublesBareRent: "ครบสีแล้วค่าเช่าที่ดินเปล่า ×2",
+  monopolyDoublesBareRent: "ครบสีแล้วค่าเช่า ×2 ทั้งหมด (ที่ดินเปล่า บ้าน แลนด์มาร์ก)",
   evenBuild: "ต้องสร้างบ้านให้เท่ากันทั้งสี",
   maxHouses: "บ้านสูงสุดต่อที่ดิน (ก่อนเป็นแลนด์มาร์ก)",
   landmarkCostMultiplier: "ราคาแลนด์มาร์ก (เท่าของราคาบ้าน)",

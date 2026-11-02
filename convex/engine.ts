@@ -158,9 +158,7 @@ export function rentFor(s: Snapshot, tileIndex: number, diceSum: number): number
   const r = s.rules;
   if (tile.type === "city") {
     const rent = tile.rent ?? [0, 0, 0, 0, 0, 0];
-    if (prop.landmark) return rent[5] ?? 0;
-    if (prop.houses > 0) return rent[Math.min(prop.houses, 4)] ?? 0;
-    const base = rent[0] ?? 0;
+    const base = (prop.landmark ? rent[5] : prop.houses > 0 ? rent[Math.min(prop.houses, 4)] : rent[0]) ?? 0;
     return r.monopolyDoublesBareRent && tile.group && hasMonopoly(s, prop.ownerSeat, tile.group) ? base * 2 : base;
   }
   if (tile.type === "special_item") {
@@ -500,7 +498,7 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
     return;
   }
   if (p.inJail) {
-    // jailMaxTurns 0 = no free release: only a double or the fine gets you out
+    // a limit of 0 = no free release: only a double or the fine gets you out
     if (p.jailLimit > 0 && p.jailTurns >= p.jailLimit) {
       p.inJail = false;
       p.jailTurns = 0;

@@ -75,9 +75,7 @@ export function rentPreview(view: GameView, tile: TileView, diceSum = 7): number
   const r = view.rules;
   if (tile.type === "city") {
     const rent = tile.rent ?? [];
-    if (prop.landmark) return rent[5] ?? 0;
-    if (prop.houses > 0) return rent[prop.houses] ?? 0;
-    const base = rent[0] ?? 0;
+    const base = (prop.landmark ? rent[5] : prop.houses > 0 ? rent[Math.min(prop.houses, 4)] : rent[0]) ?? 0;
     return r.monopolyDoublesBareRent && hasMonopoly(view, prop.ownerSeat, tile.group) ? base * 2 : base;
   }
   const owned = view.props.filter((p) => p.ownerSeat === prop.ownerSeat);

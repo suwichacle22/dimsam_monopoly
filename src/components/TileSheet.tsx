@@ -102,7 +102,7 @@ export function TileSheet({
                   return (
                     <tr key={label as string} className={cx(active && "font-bold text-cocoa")}>
                       <td className="py-[2px]">{label}</td>
-                      <td className="py-[2px] text-right tabular-nums">{baht(v as number)}</td>
+                      <td className="py-[2px] text-right tabular-nums">{baht((v as number) * (monopoly && r.monopolyDoublesBareRent ? 2 : 1))}</td>
                     </tr>
                   );
                 })}
@@ -112,7 +112,7 @@ export function TileSheet({
                 </tr>
                 {r.monopolyDoublesBareRent && (
                   <tr className="text-cocoa/60 text-xs">
-                    <td colSpan={2} className="pt-1">ถ้าเจ้าของมีครบทั้งสี ค่าเช่าที่ดินเปล่า ×2</td>
+                    <td colSpan={2} className="pt-1">{monopoly ? "เจ้าของมีครบทั้งสี ค่าเช่าในตารางนี้ ×2 แล้ว" : "ถ้าเจ้าของมีครบทั้งสี ค่าเช่าทุกระดับ ×2"}</td>
                   </tr>
                 )}
               </tbody>
