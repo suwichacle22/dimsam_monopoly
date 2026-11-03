@@ -11,6 +11,7 @@ export const Tile = memo(function Tile({
   tile,
   prop,
   owner,
+  rent,
   highlight,
   animate,
   fx,
@@ -19,6 +20,8 @@ export const Tile = memo(function Tile({
   tile: TileView;
   prop?: PropView;
   owner?: PlayerView;
+  /** what a visitor pays here right now; shown instead of the price once the tile is owned */
+  rent?: string;
   highlight?: boolean;
   animate: boolean;
   fx?: TileFx;
@@ -85,7 +88,11 @@ export const Tile = memo(function Tile({
             )}
           >
             <span className="text-[8px] md:text-[9px] font-medium text-cocoa-2 line-clamp-2">{tile.name}</span>
-            {tile.price ? <span className="text-[8px] text-cocoa/60 tabular-nums">{tile.price.toLocaleString()}</span> : null}
+            {owner && rent ? (
+              <span style={{ color: ownerColor }} className="text-[8px] font-semibold tabular-nums">{rent}</span>
+            ) : tile.price ? (
+              <span className="text-[8px] text-cocoa/60 tabular-nums">{tile.price.toLocaleString()}</span>
+            ) : null}
           </div>
         )}
       </div>

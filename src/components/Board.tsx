@@ -2,7 +2,7 @@ import { Dimsam, DimsamToken } from "~/art/Dimsam";
 import * as C from "~/art/tiles/setC";
 import type { DimsamMood } from "~/art/Dimsam";
 import type { GameView, TileView } from "~/lib/game";
-import { propAt } from "~/lib/game";
+import { propAt, rentPreview } from "~/lib/game";
 import { cx, gridPos } from "~/lib/format";
 import { Tile } from "./Tile";
 import { Dice } from "./Dice";
@@ -94,6 +94,7 @@ export function Board({
               tile={tile}
               prop={prop}
               owner={owner}
+              rent={prop ? (tile.type === "station" ? `×${rentPreview(view, tile, 1)}` : rentPreview(view, tile).toLocaleString()) : undefined}
               animate={animate}
               highlight={!resultHidden && view.game.pending?.kind === "buy" && view.game.pending.tileIndex === tile.index}
               fx={fx.find((f) => f.index === tile.index)}
