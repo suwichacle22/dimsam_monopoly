@@ -87,6 +87,7 @@ export const rulesFields = {
   gaugeAccuracy: v.optional(v.number()),
   autoEndTurn: v.optional(v.boolean()),
   tradeMode: v.optional(v.union(v.literal("debt"), v.literal("always"), v.literal("off"))),
+  rollForFirst: v.optional(v.boolean()),
 };
 
 export const phase = v.union(
@@ -98,6 +99,7 @@ export const phase = v.union(
   v.literal("world_tour"), // pick one of your own tiles to visit
   v.literal("broke"), // cash < 0, must sell or give up
   v.literal("over_debt"), // rent tab above maxDebt: repay, sell, sell land to the other player, or give up
+  v.literal("order_roll"), // game start: each player rolls once, the higher total plays first
   v.literal("end"), // may build/sell, then end turn
 );
 
@@ -106,6 +108,7 @@ export const pending = v.union(
   v.object({ kind: v.literal("card_roll"), effect: cardEffect, text: v.string() }),
   v.object({ kind: v.literal("rent"), tileIndex: v.number(), amount: v.number(), toSeat: v.number() }),
   v.object({ kind: v.literal("world_tour") }),
+  v.object({ kind: v.literal("order_roll"), rolls: v.array(v.number()) }),
   v.object({ kind: v.literal("broke"), amount: v.number(), toSeat: v.optional(v.number()), bank: v.optional(v.boolean()) }),
 );
 

@@ -214,6 +214,8 @@ export type Rules = {
   autoEndTurn: boolean;
   /** selling land to the other player: only while in debt, any time, or never */
   tradeMode: "debt" | "always" | "off";
+  /** at the start each player rolls once and the higher total plays first (off = seat 1 starts) */
+  rollForFirst: boolean;
 };
 
 export const DEFAULT_RULES: Rules = {
@@ -242,6 +244,7 @@ export const DEFAULT_RULES: Rules = {
   gaugeAccuracy: 0.1,
   autoEndTurn: true,
   tradeMode: "always",
+  rollForFirst: true,
 };
 
 export const RULE_LABELS: Record<keyof Rules, string> = {
@@ -270,4 +273,5 @@ export const RULE_LABELS: Record<keyof Rules, string> = {
   gaugeAccuracy: "โอกาสที่เล็งแล้วได้แต้มตรงเป้า (0 = สุ่มล้วน, 1 = ตรงทุกครั้ง)",
   autoEndTurn: "จบตาอัตโนมัติ (หลังซื้อ/สร้างสำเร็จ หรือเมื่อไม่มีอะไรให้สร้าง)",
   tradeMode: "ขายที่ดินให้กัน (เสนอขายที่ดินของตัวเองให้อีกฝ่าย เงินที่ได้หักหนี้ก่อน)",
+  rollForFirst: "เริ่มเกมด้วยการทอยลูกเต๋า ใครได้แต้มมากกว่าเริ่มก่อน (ปิด = ผู้เล่นที่นั่ง 1 เริ่มก่อน)",
 };

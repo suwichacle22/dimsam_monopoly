@@ -21,14 +21,17 @@ export type Tile = {
 
 export type Card = { id: string; deck: "treasure" | "special"; text: string; effect: CardEffect };
 
-/** over_debt: the rent tab passed rules.maxDebt; play waits until the debtor gets back under it or gives up */
-export type Phase = "roll" | "jail" | "buy" | "rent" | "card_roll" | "world_tour" | "broke" | "over_debt" | "end";
+/** over_debt: the rent tab passed rules.maxDebt; play waits until the debtor gets back under it or gives up
+ *  order_roll: before the first turn each player rolls once, the higher total plays first */
+export type Phase = "roll" | "jail" | "buy" | "rent" | "card_roll" | "world_tour" | "broke" | "over_debt" | "order_roll" | "end";
 
 export type Pending =
   | { kind: "buy"; tileIndex: number }
   | { kind: "card_roll"; effect: CardEffect; text: string }
   | { kind: "rent"; tileIndex: number; amount: number; toSeat: number }
   | { kind: "world_tour" }
+  /** each seat's dice total so far (0 = not rolled yet) */
+  | { kind: "order_roll"; rolls: number[] }
   /** bank: the shortfall is owed to the bank (card, tax), so it may go on the bank debt */
   | { kind: "broke"; amount: number; toSeat?: number; bank?: boolean };
 
@@ -544,7 +547,14 @@ export function startGame(s: Snapshot) {
   }
   s.props = {};
   log(s, "start", `เริ่มเกม! แต่ละคนได้เงิน ${fmt(s.rules.startingMoney)} บาท`);
-  startTurnFor(s, 0);
+  if (s.rules.rollForFirst) {
+    s.game.turn = 0;
+    s.game.phase = "order_roll";
+    s.game.pending = { kind: "order_roll", rolls: s.players.map(() => 0) };
+    log(s, "start", "ทอยลูกเต๋าหาคนเริ่มก่อน ใครได้แต้มมากกว่าเริ่มก่อน");
+  } else {
+    startTurnFor(s, 0);
+  }
 }
 
 /** Two dice; with an aimed `target` (2–12) the result hits the target with rules.gaugeAccuracy. */
@@ -563,7 +573,7 @@ function rollDice(s: Snapshot, target?: number): [number, number] {
 }
 
 export function roll(s: Snapshot, seat: number, target?: number) {
-  requireTurn(s, seat, "roll", "jail", "card_roll");
+  requireTurn(s, seat, "roll", "jail", "card_roll", "order_roll");
   const g = s.game;
   const p = s.players[seat];
   const aimed = target !== undefined && s.rules.gaugeEnabled && (g.phase === "roll" || g.phase === "jail") ? target : undefined;
@@ -572,6 +582,11 @@ export function roll(s: Snapshot, seat: number, target?: number) {
   const isDouble = a === b;
   const aimText = aimed === undefined ? "" : a + b === aimed ? ` 🎯 ตรงเป้า ${aimed}!` : ` (เล็ง ${aimed})`;
   log(s, "roll", `${p.name} ทอยได้ ${a} + ${b} = ${a + b}${aimText}${isDouble ? " เบิ้ล!" : ""}`, seat);
+
+  if (g.phase === "order_roll" && g.pending?.kind === "order_roll") {
+    decideOrder(s, seat, a + b);
+    return;
+  }
 
   if (g.phase === "card_roll" && g.pending?.kind === "card_roll") {
     const e = g.pending.effect;
@@ -624,6 +639,31 @@ export function roll(s: Snapshot, seat: number, target?: number) {
   }
   moveBy(s, seat, a + b);
   land(s, seat);
+}
+
+/** Records a roll for who goes first; once everyone has rolled the highest total starts, a tie rolls again. */
+function decideOrder(s: Snapshot, seat: number, total: number) {
+  const g = s.game;
+  if (g.pending?.kind !== "order_roll") return;
+  const rolls = [...g.pending.rolls];
+  rolls[seat] = total;
+  g.pending = { kind: "order_roll", rolls };
+  g.lastRollDouble = false;
+  const next = s.players.find((p) => !p.bankrupt && rolls[p.seat] === 0);
+  if (next) {
+    g.turn = next.seat;
+    return;
+  }
+  const best = Math.max(...rolls);
+  const top = s.players.filter((p) => rolls[p.seat] === best);
+  if (top.length > 1) {
+    log(s, "order", `ได้แต้มเท่ากัน (${best}) ทอยใหม่อีกรอบ`);
+    g.turn = top[0].seat;
+    g.pending = { kind: "order_roll", rolls: s.players.map(() => 0) };
+    return;
+  }
+  log(s, "order", `${s.players.map((p) => `${p.name} ${rolls[p.seat]}`).join(" · ")} → ${top[0].name} เริ่มก่อน!`, top[0].seat);
+  startTurnFor(s, top[0].seat);
 }
 
 /** Pays rent in cash, or (mode "tab") nets it against the tab between the two players. */

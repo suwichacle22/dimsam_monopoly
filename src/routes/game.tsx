@@ -531,7 +531,7 @@ function Game({ token }: { token: string }) {
   const me = view?.players.find((p) => p.seat === view.me);
   const busy = rolling || walking || showing;
   const myTurn = !!view && view.game.turn === view.me && view.game.status === "playing";
-  const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll"].includes(view!.game.phase);
+  const canRollNow = myTurn && !busy && !pendingAction && !card && ["roll", "jail", "card_roll", "order_roll"].includes(view!.game.phase);
   // step numbers count from the active player and hold still until the next roll is due, so they stay put through a turn
   const stepsAnchor = useRef<{ seat: number; tile: number } | undefined>(undefined);
   if (view && revealedAt === view.game.actionAt && !busy && ["roll", "jail", "card_roll"].includes(view.game.phase)) {

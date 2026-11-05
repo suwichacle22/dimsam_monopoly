@@ -23,6 +23,8 @@ const ICON: Record<string, string> = {
   finish: "🏆",
   start: "🎉",
   move: "🐾",
+  order: "🎲",
+  bank_debt: "🏦",
 };
 
 export function EventLog({ view, resultHidden, className }: { view: GameView; resultHidden?: boolean; className?: string }) {

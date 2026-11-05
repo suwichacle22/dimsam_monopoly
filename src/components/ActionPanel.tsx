@@ -45,6 +45,7 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
         <p className="text-cocoa/70 text-center">
           {current?.bot ? "🤖 " : ""}รอ <b className="text-cocoa">{current?.name}</b>{" "}
           {g.phase === "roll" && "ทอยลูกเต๋า"}
+          {g.phase === "order_roll" && "ทอยหาคนเริ่มก่อน"}
           {g.phase === "jail" && "ทอยหาเบิ้ลในอ่างอาบน้ำ"}
           {g.phase === "buy" && "ตัดสินใจซื้อที่ดิน"}
           {g.phase === "rent" && "เลือกวิธีจ่ายค่าเช่า"}
@@ -116,6 +117,25 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
           </div>
           <button className="text-xs underline text-cocoa/60 self-start" onClick={() => actions.openTile(tile.index)}>
             ดูรายละเอียดค่าเช่า
+          </button>
+        </Panel>
+      );
+    }
+    case "order_roll": {
+      const rolls = g.pending?.kind === "order_roll" ? g.pending.rolls : [];
+      return (
+        <Panel>
+          <p className="font-semibold text-cocoa">ทอยหาคนเริ่มก่อน</p>
+          <p className="text-sm text-cocoa/70">ทุกคนทอยคนละครั้ง ใครได้แต้มมากกว่าเริ่มก่อน ได้เท่ากันทอยใหม่</p>
+          <div className="flex gap-2 text-sm">
+            {view.players.map((p) => (
+              <span key={p.seat} className="flex-1 rounded-xl bg-cream-2 px-2 py-1 text-center">
+                {p.name} <b className="tabular-nums">{rolls[p.seat] ? rolls[p.seat] : "–"}</b>
+              </span>
+            ))}
+          </div>
+          <button className="btn-primary w-full" disabled={disabled} onClick={() => actions.roll()}>
+            🎲 ทอยลูกเต๋า <kbd className="hidden sm:inline-block ml-2 text-xs font-normal bg-white/25 rounded px-1.5 py-0.5 align-middle">Space</kbd>
           </button>
         </Panel>
       );

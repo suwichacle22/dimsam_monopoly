@@ -6,7 +6,7 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
   const queue = [...dice];
   const cards: E.Card[] = DEFAULT_CARDS.map((c, i) => ({ id: `c${i}`, deck: c.deck, text: c.text, effect: c.effect }));
   const s: E.Snapshot = {
-    rules: { ...DEFAULT_RULES },
+    rules: { ...DEFAULT_RULES, rollForFirst: false }, // most tests want seat 0 to start; the roll-off has its own tests
     tiles: DEFAULT_TILES,
     cards,
     game: {
@@ -54,6 +54,45 @@ describe("start", () => {
     expect(s.game.status).toBe("playing");
     expect(s.game.turn).toBe(0);
     expect(s.game.phase).toBe("roll");
+  });
+});
+
+describe("rolling for who goes first", () => {
+  function rollOff(dice: number[]) {
+    const s = makeSnap(dice, { rules: { ...DEFAULT_RULES, rollForFirst: true } });
+    expect(s.game.phase).toBe("order_roll");
+    return s;
+  }
+
+  test("the higher total plays first, and nobody moves during the roll-off", () => {
+    const s = rollOff([1, 2, 5, 6]); // A 3, B 11
+    E.roll(s, 0);
+    expect(s.game.turn).toBe(1);
+    expect(() => E.roll(s, 0)).toThrow();
+    E.roll(s, 1);
+    expect(s.game.turn).toBe(1);
+    expect(s.game.phase).toBe("roll");
+    expect(s.players.map((p) => p.position)).toEqual([0, 0]);
+    expect(s.players.map((p) => p.cash)).toEqual([30000, 30000]);
+  });
+
+  test("a tie rolls again from the first seat", () => {
+    const s = rollOff([3, 4, 2, 5, 6, 6, 1, 1]); // 7 vs 7, then 12 vs 2
+    E.roll(s, 0);
+    E.roll(s, 1);
+    expect(s.game.phase).toBe("order_roll");
+    expect(s.game.pending).toEqual({ kind: "order_roll", rolls: [0, 0] });
+    expect(s.game.turn).toBe(0);
+    E.roll(s, 0);
+    E.roll(s, 1);
+    expect(s.game.turn).toBe(0);
+    expect(s.game.phase).toBe("roll");
+  });
+
+  test("off: seat 1 starts right away", () => {
+    const s = makeSnap();
+    expect(s.game.phase).toBe("roll");
+    expect(s.game.turn).toBe(0);
   });
 });
 

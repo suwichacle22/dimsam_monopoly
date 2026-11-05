@@ -191,6 +191,7 @@ export const botStep = mutation({
       switch (game.phase) {
         case "roll":
         case "card_roll":
+        case "order_roll":
           E.roll(s, seat);
           break;
         case "jail":
