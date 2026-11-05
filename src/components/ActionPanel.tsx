@@ -51,6 +51,7 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
           {g.phase === "card_roll" && "ทอยลูกเต๋าตามการ์ด"}
           {g.phase === "world_tour" && "เลือกที่จะไปเดินเล่น"}
           {g.phase === "broke" && "หาเงินมาจ่าย"}
+          {g.phase === "over_debt" && "ลดหนี้ที่ติดคุณ (เกินกำหนด)"}
           {g.phase === "end" && "จบตา"}
           …
         </p>
@@ -175,6 +176,28 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
               </>
             );
           })()}
+          <button className="btn-danger w-full" disabled={disabled} onClick={actions.giveUp}>
+            ยอมแพ้
+          </button>
+        </Panel>
+      );
+    }
+    case "over_debt": {
+      const limit = view.rules.maxDebt;
+      const over = Math.max(0, me.debt - limit);
+      const creditor = view.players.find((p) => p.seat !== view.me);
+      const pay = Math.min(me.cash, over);
+      return (
+        <Panel tone="danger">
+          <p className="font-semibold text-berry">
+            ติดหนี้ {creditor?.name} {baht(me.debt)} เกิน {baht(limit)}!
+          </p>
+          <p className="text-sm text-cocoa/70">
+            เกมหยุดจนกว่าหนี้จะเหลือไม่เกิน {baht(limit)} (ต้องลดอีก <b className="text-cocoa">{baht(over)}</b>) · ชำระด้วยเงินสด แตะที่ดินของคุณบนกระดานเพื่อขายคืนธนาคาร หรือเสนอขายให้ {creditor?.name} (ราคาขายหักหนี้ก่อน)
+          </p>
+          <button className="btn-primary w-full" disabled={disabled || pay <= 0} onClick={() => actions.payDebt(pay)}>
+            {pay > 0 ? `ชำระหนี้ ${baht(pay)}` : "ชำระหนี้ (ไม่มีเงินสด)"}
+          </button>
           <button className="btn-danger w-full" disabled={disabled} onClick={actions.giveUp}>
             ยอมแพ้
           </button>

@@ -97,6 +97,7 @@ export const phase = v.union(
   v.literal("card_roll"), // a card asks for a dice roll
   v.literal("world_tour"), // pick one of your own tiles to visit
   v.literal("broke"), // cash < 0, must sell or give up
+  v.literal("over_debt"), // rent tab above maxDebt: repay, sell, sell land to the other player, or give up
   v.literal("end"), // may build/sell, then end turn
 );
 

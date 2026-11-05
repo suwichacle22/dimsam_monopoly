@@ -142,7 +142,7 @@ export function Decision({ view, disabled, actions, spaceHeld }: { view: GameVie
           </div>
           {(me.debt > 0 || owner.debt > 0) && (
             <Small>
-              {me.debt > 0 && <>คุณติด {owner.name} อยู่ {baht(me.debt)} (ติดได้อีก {baht(Math.max(0, r.maxDebt - me.debt))})</>}
+              {me.debt > 0 && <>คุณติด {owner.name} อยู่ {baht(me.debt)} (ไม่เกิน {baht(r.maxDebt)} เล่นต่อได้)</>}
               {owner.debt > 0 && <>{owner.name} ติดคุณอยู่ {baht(owner.debt)}</>}
             </Small>
           )}
@@ -165,7 +165,11 @@ export function Decision({ view, disabled, actions, spaceHeld }: { view: GameVie
           </div>
           {!canCash && <Btn tone="danger" disabled={disabled} onClick={actions.giveUp} label="ยอมแพ้" />}
           {tabUseful && <p className="text-xs text-cocoa/60 text-center">{parts.join(" · ")}</p>}
-          {!tabUseful && me.debt >= r.maxDebt && <p className="text-xs text-berry text-center">ติดครบ {baht(r.maxDebt)} แล้ว ติดเพิ่มไม่ได้</p>}
+          {r.maxDebt > 0 && me.debt + tp.tabbed > r.maxDebt && (
+            <p className="text-xs text-berry text-center">
+              ถ้าติดไว้ หนี้จะเป็น {baht(me.debt + tp.tabbed)} เกิน {baht(r.maxDebt)} · เกมจะหยุดจนกว่าคุณจะลดหนี้ (ชำระ ขายที่ดิน เสนอขายให้ {owner.name}) หรือยอมแพ้
+            </p>
+          )}
         </Card>
       );
     }

@@ -47,7 +47,7 @@ export function canSellNow(view: GameView, seat: number, tile: TileView): boolea
   const prop = propAt(view, tile.index);
   if (!prop || prop.ownerSeat !== seat) return false;
   if (view.game.turn !== seat) return false;
-  return ["roll", "end", "jail", "broke", "world_tour", "rent"].includes(view.game.phase);
+  return ["roll", "end", "jail", "broke", "over_debt", "world_tour", "rent"].includes(view.game.phase);
 }
 
 /** Purchase price of a tile plus everything built on it (mirrors engine builtValue). */
@@ -101,11 +101,10 @@ export function houseSellValue(view: GameView, tile: TileView, landmark: boolean
 
 /** How a "tab" payment of `amount` would split for `seat` right now. */
 export function tabPreview(view: GameView, seat: number, amount: number): { offset: number; tabbed: number; cash: number } {
-  const me = view.players.find((p) => p.seat === seat)!;
   const other = view.players.find((p) => p.seat !== seat);
   const offset = Math.min(amount, other?.debt ?? 0);
-  const room = Math.max(0, view.rules.maxDebt - me.debt);
-  const tabbed = Math.min(amount - offset, room);
+  // no cap on the tab (going over maxDebt stops the game instead); maxDebt 0 = no tab at all
+  const tabbed = view.rules.maxDebt > 0 ? amount - offset : 0;
   return { offset, tabbed, cash: amount - offset - tabbed };
 }
 

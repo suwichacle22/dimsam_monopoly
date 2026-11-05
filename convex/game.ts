@@ -207,7 +207,7 @@ export const botStep = mutation({
         }
         case "rent": {
           const amount = (game.pending as { amount: number }).amount;
-          E.payRent(s, seat, p.cash - amount >= 6000 || p.debt + amount > s.rules.maxDebt ? "cash" : "tab");
+          E.payRent(s, seat, p.cash - amount >= 6000 || (p.debt + amount > s.rules.maxDebt && p.cash >= amount) ? "cash" : "tab");
           break;
         }
         case "world_tour": {
@@ -218,6 +218,19 @@ export const botStep = mutation({
         case "broke": {
           if (s.game.pending?.kind === "broke" && s.game.pending.bank && E.bankRoom(s, seat) > 0) {
             E.borrowBank(s, seat);
+            break;
+          }
+          const own = E.ownedBy(s, seat).sort((a, b) => (s.tiles.find((t) => t.index === a)?.price ?? 0) - (s.tiles.find((t) => t.index === b)?.price ?? 0));
+          const withHouses = own.find((i) => s.props[i].houses > 0 || s.props[i].landmark);
+          if (withHouses !== undefined) E.sellHouse(s, seat, withHouses);
+          else if (own.length) E.sellLand(s, seat, own[0]);
+          else E.giveUp(s, seat);
+          break;
+        }
+        case "over_debt": {
+          // repay what cash allows, then sell (cheapest first) and repay again, else give up
+          if (p.cash > 0) {
+            E.payDebt(s, seat, Math.min(p.cash, p.debt - s.rules.maxDebt));
             break;
           }
           const own = E.ownedBy(s, seat).sort((a, b) => (s.tiles.find((t) => t.index === a)?.price ?? 0) - (s.tiles.find((t) => t.index === b)?.price ?? 0));

@@ -21,7 +21,8 @@ export type Tile = {
 
 export type Card = { id: string; deck: "treasure" | "special"; text: string; effect: CardEffect };
 
-export type Phase = "roll" | "jail" | "buy" | "rent" | "card_roll" | "world_tour" | "broke" | "end";
+/** over_debt: the rent tab passed rules.maxDebt; play waits until the debtor gets back under it or gives up */
+export type Phase = "roll" | "jail" | "buy" | "rent" | "card_roll" | "world_tour" | "broke" | "over_debt" | "end";
 
 export type Pending =
   | { kind: "buy"; tileIndex: number }
@@ -508,6 +509,10 @@ function startTurnFor(s: Snapshot, seat: number, depth = 0) {
     g.pending = { kind: "broke", amount: -p.cash };
     return;
   }
+  if (s.rules.maxDebt > 0 && p.debt > s.rules.maxDebt) {
+    checkOverDebt(s, seat);
+    return;
+  }
   if (p.inJail) {
     // a limit of 0 = no free release: only a double or the fine gets you out
     if (p.jailLimit > 0 && p.jailTurns >= p.jailLimit) {
@@ -635,11 +640,10 @@ function settleRent(s: Snapshot, seat: number, tileIndex: number, amount: number
     offset = Math.min(amount, owner.debt);
     owner.debt -= offset;
     cash -= offset;
-    // 2. put as much of the rest as the cap allows on my tab
-    const room = Math.max(0, s.rules.maxDebt - p.debt);
-    tabbed = Math.min(cash, room);
+    // 2. the rest goes on my tab; there is no cap, but going over maxDebt stops the game (below)
+    tabbed = cash;
     p.debt += tabbed;
-    cash -= tabbed;
+    cash = 0;
     if (offset > 0) log(s, "offset", `${p.name} หักหนี้ที่ ${owner.name} ติดไว้ ${fmt(offset)} บาท`, seat);
     if (tabbed > 0) log(s, "tab", `${p.name} ติดค่าเช่า ${tile.name} ไว้ก่อน ${fmt(tabbed)} บาท (รวมติด ${fmt(p.debt)})`, seat);
   }
@@ -649,6 +653,17 @@ function settleRent(s: Snapshot, seat: number, tileIndex: number, amount: number
     text: JSON.stringify({ to: toSeat, amount, tile: tileIndex, landmark: prop?.landmark ?? false, houses: prop?.houses ?? 0, cash, offset, tabbed }),
   });
   if (cash > 0) charge(s, seat, cash, `ค่าเช่า ${tile.name} ให้ ${owner.name}`, toSeat);
+  if (mode === "tab") checkOverDebt(s, seat);
+}
+
+/** Over the tab limit: stop the turn until the debtor repays, sells, gets an offer accepted, or gives up. */
+function checkOverDebt(s: Snapshot, seat: number) {
+  const p = s.players[seat];
+  const limit = s.rules.maxDebt;
+  if (limit <= 0 || p.debt <= limit || s.game.status !== "playing") return;
+  s.game.phase = "over_debt";
+  s.game.pending = undefined;
+  log(s, "broke", `${p.name} ติดหนี้ ${fmt(p.debt)} เกิน ${fmt(limit)} บาท ต้องลดหนี้ให้เหลือไม่เกิน ${fmt(limit)} ก่อนเล่นต่อ (ชำระหนี้ ขายที่ดิน เสนอขายที่ดินให้อีกฝ่าย หรือยอมแพ้)`, seat);
 }
 
 export function payRent(s: Snapshot, seat: number, mode: "cash" | "tab") {
@@ -677,6 +692,7 @@ export function payDebt(s: Snapshot, seat: number, amount?: number) {
   creditor.cash += amt;
   txn(s, seat, { type: "repay", amount: amt, from: seat, to: creditor.seat });
   log(s, "repay", `${p.name} ชำระหนี้ให้ ${creditor.name} ${fmt(amt)} บาท${p.debt > 0 ? ` (เหลือ ${fmt(p.debt)})` : " หมดหนี้แล้ว"}`, seat);
+  afterSale(s, seat);
 }
 
 /** Short on a card or tax payment: put (as much as the cap allows of) the shortfall on the bank debt. */
@@ -798,17 +814,23 @@ export function build(s: Snapshot, seat: number, tileIndex: number) {
   }
 }
 
+/** After money moved for `seat`: leave the broke / over_debt phase once it is resolved (only on their own turn). */
 function afterSale(s: Snapshot, seat: number) {
   const p = s.players[seat];
+  if (s.game.turn !== seat) return;
   if (s.game.phase === "broke" && p.cash >= 0) {
     log(s, "broke", `${p.name} หาเงินมาจ่ายครบแล้ว`, seat);
     s.game.pending = undefined;
+    s.game.phase = "end";
+    checkOverDebt(s, seat);
+  } else if (s.game.phase === "over_debt" && p.debt <= s.rules.maxDebt) {
+    log(s, "broke", `${p.name} ลดหนี้เหลือ ${fmt(p.debt)} บาท ไม่เกิน ${fmt(s.rules.maxDebt)} แล้ว เล่นต่อได้`, seat);
     s.game.phase = "end";
   }
 }
 
 export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour", "rent");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "over_debt", "world_tour", "rent");
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];
   const p = s.players[seat];
@@ -833,7 +855,7 @@ export function sellHouse(s: Snapshot, seat: number, tileIndex: number) {
 }
 
 export function sellLand(s: Snapshot, seat: number, tileIndex: number) {
-  requireTurn(s, seat, "roll", "end", "jail", "broke", "world_tour", "rent");
+  requireTurn(s, seat, "roll", "end", "jail", "broke", "over_debt", "world_tour", "rent");
   if (s.game.offer?.tileIndex === tileIndex) s.game.offer = undefined; // the land is gone, so is the offer
   const tile = tileAt(s, tileIndex);
   const prop = s.props[tileIndex];

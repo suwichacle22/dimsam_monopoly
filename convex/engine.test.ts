@@ -741,13 +741,52 @@ describe("tab between players (ติดไว้ก่อน)", () => {
     expect(s.players[0].cash).toBeLessThan(0);
   });
 
-  test("the tab is capped; the rest must come from cash, or you go broke", () => {
+  test("the tab has no cap, but going over maxDebt stops the game", () => {
     const s = landOnRent(100);
-    s.players[0].debt = 18000; // room 2000
+    s.players[0].debt = 18000;
     E.payRent(s, 0, "tab");
+    expect(s.players[0].debt).toBe(22500);
+    expect(s.players[0].cash).toBe(100);
+    expect(s.game.phase).toBe("over_debt");
+    expect(() => E.endTurn(s, 0)).toThrow();
+    expect(() => E.roll(s, 0)).toThrow();
+  });
+
+  test("over the limit: repaying down to maxDebt lets the game go on", () => {
+    const s = landOnRent(5000);
+    s.players[0].debt = 18000;
+    E.payRent(s, 0, "tab");
+    E.payDebt(s, 0, 2000);
+    expect(s.game.phase).toBe("over_debt");
+    E.payDebt(s, 0, 500);
     expect(s.players[0].debt).toBe(20000);
-    expect(s.players[0].cash).toBe(100 - 2500);
-    expect(s.game.phase).toBe("broke");
+    expect(s.game.phase).toBe("end");
+  });
+
+  test("over the limit: selling land to the bank, then repaying, also works", () => {
+    const s = landOnRent(0);
+    s.players[0].debt = 18000;
+    s.props[37] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[39] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.payRent(s, 0, "tab");
+    E.sellLand(s, 0, 37);
+    E.sellLand(s, 0, 39);
+    expect(s.game.phase).toBe("over_debt"); // selling raises cash; only repaying lowers the debt
+    E.payDebt(s, 0);
+    expect(s.players[0].debt).toBeLessThanOrEqual(20000);
+    expect(s.game.phase).toBe("end");
+  });
+
+  test("over the limit: an accepted land offer cancels the debt and lets the game go on", () => {
+    const s = landOnRent(0);
+    s.players[0].debt = 18000;
+    s.props[6] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.payRent(s, 0, "tab");
+    E.offerSale(s, 0, 6, 3000);
+    E.respondOffer(s, 1, true);
+    expect(s.players[0].debt).toBe(19500);
+    expect(s.props[6].ownerSeat).toBe(1);
+    expect(s.game.phase).toBe("end");
   });
 
   test("when the creditor lands on the debtor's land, rent cancels the debt first", () => {

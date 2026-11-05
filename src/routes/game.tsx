@@ -579,7 +579,7 @@ function Game({ token }: { token: string }) {
             ? "soggy"
             : !myTurn
               ? "sleep"
-              : view.game.phase === "broke"
+              : view.game.phase === "broke" || view.game.phase === "over_debt"
                 ? "sad"
                 : ["buy", "rent", "world_tour", "card_roll"].includes(view.game.phase)
                   ? "think"
