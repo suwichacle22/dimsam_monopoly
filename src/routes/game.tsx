@@ -38,8 +38,8 @@ const fmtBaht = (n: number) => `${n > 0 ? "+" : "-"}${Math.abs(n).toLocaleString
 
 type CoinEnd = { tile: number } | { seat: number };
 /** the balances on screen: they follow the choreography, not the server */
-type Ledger = { cash: number[]; debt: number[] };
-const ledgerOf = (v: GameView): Ledger => ({ cash: v.players.map((p) => p.cash), debt: v.players.map((p) => p.debt) });
+type Ledger = { cash: number[]; debt: number[]; bank: number[] };
+const ledgerOf = (v: GameView): Ledger => ({ cash: v.players.map((p) => p.cash), debt: v.players.map((p) => p.debt), bank: v.players.map((p) => p.bankDebt) });
 
 function GamePage() {
   const session = useSession();
@@ -73,6 +73,8 @@ function Game({ token }: { token: string }) {
     skipBuy: useMutation(api.game.skipBuy),
     payRent: useMutation(api.game.payRent),
     payDebt: useMutation(api.game.payDebt),
+    borrowBank: useMutation(api.game.borrowBank),
+    payBankDebt: useMutation(api.game.payBankDebt),
     payJail: useMutation(api.game.payJail),
     worldTour: useMutation(api.game.worldTour),
     build: useMutation(api.game.build),
@@ -141,15 +143,15 @@ function Game({ token }: { token: string }) {
     setFlights((f) => [...f, { id, n, from, to }]);
     setTimeout(() => setFlights((f) => f.filter((x) => x.id !== id)), 1400);
   };
-  const [ledger, setLedger] = useState<Ledger>({ cash: [], debt: [] });
+  const [ledger, setLedger] = useState<Ledger>({ cash: [], debt: [], bank: [] });
   const ledgerRef = useRef(ledger);
   const syncLedger = (next: Ledger) => {
     ledgerRef.current = next;
     setLedger(next);
   };
-  const moveMoney = (seat: number, cash: number, debt = 0) => {
-    const { cash: c, debt: d } = ledgerRef.current;
-    syncLedger({ cash: c.map((x, s) => (s === seat ? x + cash : x)), debt: d.map((x, s) => (s === seat ? x + debt : x)) });
+  const moveMoney = (seat: number, cash: number, debt = 0, bank = 0) => {
+    const { cash: c, debt: d, bank: b } = ledgerRef.current;
+    syncLedger({ cash: c.map((x, s) => (s === seat ? x + cash : x)), debt: d.map((x, s) => (s === seat ? x + debt : x)), bank: b.map((x, s) => (s === seat ? x + bank : x)) });
   };
   // the last action that has finished playing; until it catches up with the server the game waits for the show
   const [settledAt, setSettledAt] = useState<number | null>(null);
@@ -427,6 +429,24 @@ function Game({ token }: { token: string }) {
           await badge(e.seat, t.tile, t.amount, `ขาย${what} ${tileOf(t.tile)?.name ?? ""}`, "cash");
         } else if (t.type === "fine") {
           await badge(e.seat, t.tile, -t.amount, "จ่ายค่าไถ่ออกจากอ่าง", "pay");
+        } else if (t.type === "borrow" || t.type === "bank_repay") {
+          // bank debt (ติดหนี้ธนาคาร): borrowing covers a card/tax shortfall, repaying hands cash back to the bank
+          const p = v.players[e.seat];
+          const borrow = t.type === "borrow";
+          moveMoney(e.seat, borrow ? t.amount : -t.amount, 0, borrow ? t.amount : -t.amount);
+          const left = ledgerRef.current.bank[e.seat] ?? 0;
+          await showBurst(
+            {
+              id: ++fxKey.current,
+              amount: borrow ? t.amount : -t.amount,
+              tone: "tab",
+              label: borrow ? `${p.name} ติดหนี้ธนาคาร` : `${p.name} ชำระหนี้ธนาคาร`,
+              kicker: "ธนาคาร 🏦",
+              detail: left > 0 ? `หนี้ธนาคารรวม ${left.toLocaleString()}` : "หมดหนี้ธนาคารแล้ว",
+              variant: p.variant,
+            },
+            borrow ? "tab" : "pay",
+          );
         } else {
           // collect (card) and repay move money between the players: each phone sees its own side
           const iPay = t.from === v.me;
@@ -570,6 +590,7 @@ function Game({ token }: { token: string }) {
     buy: (withHouse = false) => run(() => m.buy({ token, withHouse })),
     payRent: (mode: "cash" | "tab") => run(() => m.payRent({ token, mode })),
     payDebt: (amount?: number) => run(() => m.payDebt({ token, amount })),
+    borrowBank: () => run(() => m.borrowBank({ token })),
     build: (tileIndex: number) => run(() => m.build({ token, tileIndex })),
     skipBuy: () => run(() => m.skipBuy({ token })),
     payJail: () => run(() => m.payJail({ token })),
@@ -613,7 +634,7 @@ function Game({ token }: { token: string }) {
         <OfferCard view={view} busy={pendingAction} onRespond={(accept) => run(() => m.respondOffer({ token, accept }))} onCancel={() => run(() => m.cancelOffer({ token }))} />
         <ActionPanel view={view} busy={rolling || walking} pendingAction={pendingAction || showing} actions={actions} spaceHeld={spaceHeld} autoEnding={autoEnding} />
         {error && <div className="rounded-2xl bg-berry/10 border border-berry/30 text-berry text-sm px-3 py-2">{error}</div>}
-        <PlayerPanel view={view} shown={showing ? ledger : undefined} onTile={actions.openTile} onPayDebt={actions.payDebt} />
+        <PlayerPanel view={view} shown={showing ? ledger : undefined} onTile={actions.openTile} onPayDebt={actions.payDebt} onPayBankDebt={(amount) => run(() => m.payBankDebt({ token, amount }))} />
         {view.players.some((p) => p.bot) && (
           <TestPanel
             view={view}

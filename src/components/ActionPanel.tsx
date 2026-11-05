@@ -9,6 +9,7 @@ export type Actions = {
   buy: (withHouse?: boolean) => void;
   payRent: (mode: "cash" | "tab") => void;
   payDebt: (amount?: number) => void;
+  borrowBank: () => void;
   build: (tileIndex: number) => void;
   skipBuy: () => void;
   payJail: () => void;
@@ -158,6 +159,22 @@ export function ActionPanel({ view, busy, pendingAction, actions, spaceHeld, aut
           <p className="text-sm">
             ขายทั้งหมดได้สูงสุด <b>{baht(w.sellable)}</b> จากทรัพย์สินมูลค่า {baht(w.assets)}
           </p>
+          {g.pending?.kind === "broke" && g.pending.bank && view.rules.maxBankDebt > 0 && (() => {
+            const room = Math.max(0, view.rules.maxBankDebt - me.bankDebt);
+            const amt = Math.min(-me.cash, room);
+            return (
+              <>
+                <button className="btn-primary w-full" disabled={disabled || amt <= 0} onClick={actions.borrowBank}>
+                  ติดหนี้ธนาคาร {baht(amt)}
+                </button>
+                <p className="text-xs text-cocoa/60">
+                  {room <= 0
+                    ? `ติดหนี้ธนาคารครบ ${baht(view.rules.maxBankDebt)} แล้ว ต้องขายทรัพย์สิน`
+                    : `ไม่ต้องขายที่ดิน ติดธนาคารได้อีก ${baht(room)} (สูงสุด ${baht(view.rules.maxBankDebt)})${amt < -me.cash ? ` ที่เหลือ ${baht(-me.cash - amt)} ต้องขายทรัพย์สิน` : ""}`}
+                </p>
+              </>
+            );
+          })()}
           <button className="btn-danger w-full" disabled={disabled} onClick={actions.giveUp}>
             ยอมแพ้
           </button>

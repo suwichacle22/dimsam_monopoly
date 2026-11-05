@@ -40,6 +40,7 @@ const publicPlayer = (p: Doc<"players">) => ({
   skipTurns: p.skipTurns,
   bankrupt: p.bankrupt,
   debt: p.debt ?? 0,
+  bankDebt: p.bankDebt ?? 0,
   bot: p.bot ?? false,
   online: p.bot ? true : Date.now() - p.lastSeen < 45_000,
 });
@@ -215,6 +216,10 @@ export const botStep = mutation({
           break;
         }
         case "broke": {
+          if (s.game.pending?.kind === "broke" && s.game.pending.bank && E.bankRoom(s, seat) > 0) {
+            E.borrowBank(s, seat);
+            break;
+          }
           const own = E.ownedBy(s, seat).sort((a, b) => (s.tiles.find((t) => t.index === a)?.price ?? 0) - (s.tiles.find((t) => t.index === b)?.price ?? 0));
           const withHouses = own.find((i) => s.props[i].houses > 0 || s.props[i].landmark);
           if (withHouses !== undefined) E.sellHouse(s, seat, withHouses);
@@ -232,6 +237,7 @@ export const botStep = mutation({
             }
           }
           if (p.debt > 0 && p.cash - p.debt >= 10000) E.payDebt(s, seat);
+          if (p.bankDebt > 0 && p.cash - p.bankDebt >= 10000) E.payBankDebt(s, seat);
           E.endTurn(s, seat);
           break;
         }
@@ -411,6 +417,14 @@ export const payRent = mutation({
 export const payDebt = mutation({
   args: { token: v.string(), amount: v.optional(v.number()) },
   handler: (ctx, { token, amount }) => act(ctx, token, (s, seat) => E.payDebt(s, seat, amount)),
+});
+export const borrowBank = mutation({
+  args: { token: v.string() },
+  handler: (ctx, { token }) => act(ctx, token, (s, seat) => E.borrowBank(s, seat)),
+});
+export const payBankDebt = mutation({
+  args: { token: v.string(), amount: v.optional(v.number()) },
+  handler: (ctx, { token, amount }) => act(ctx, token, (s, seat) => E.payBankDebt(s, seat, amount)),
 });
 export const skipBuy = mutation({
   args: { token: v.string() },

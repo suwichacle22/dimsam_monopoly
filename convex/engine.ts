@@ -28,7 +28,8 @@ export type Pending =
   | { kind: "card_roll"; effect: CardEffect; text: string }
   | { kind: "rent"; tileIndex: number; amount: number; toSeat: number }
   | { kind: "world_tour" }
-  | { kind: "broke"; amount: number; toSeat?: number };
+  /** bank: the shortfall is owed to the bank (card, tax), so it may go on the bank debt */
+  | { kind: "broke"; amount: number; toSeat?: number; bank?: boolean };
 
 export type GameState = {
   status: "lobby" | "playing" | "finished";
@@ -68,6 +69,8 @@ export type PlayerState = {
   bankrupt: boolean;
   /** rent owed to the other player */
   debt: number;
+  /** card and tax payments owed to the bank (ติดหนี้ธนาคาร) */
+  bankDebt: number;
 };
 
 export type Prop = { ownerSeat: number; houses: number; landmark: boolean };
@@ -101,6 +104,8 @@ export type Txn =
   | { type: "fine"; amount: number; tile: number }
   | { type: "sell"; amount: number; tile: number; what: "house" | "landmark" | "land" }
   | { type: "repay"; amount: number; from: number; to: number }
+  | { type: "borrow"; amount: number }
+  | { type: "bank_repay"; amount: number }
   | { type: "collect"; amount: number; from: number; to: number };
 
 function txn(s: Snapshot, seat: number, t: Txn) {
@@ -223,15 +228,21 @@ function charge(s: Snapshot, seat: number, amount: number, why: string, toSeat?:
   if (toSeat !== undefined) s.players[toSeat].cash += amount;
   log(s, "money", `${p.name} จ่าย ${fmt(amount)} บาท (${why})`, seat);
   if (p.cash < 0) {
+    const bank = toSeat === undefined;
     s.game.phase = "broke";
-    s.game.pending = { kind: "broke", amount: -p.cash, toSeat };
-    log(s, "broke", `${p.name} เงินไม่พอ ต้องขายทรัพย์สิน ${fmt(-p.cash)} บาท`, seat);
-    if (p.cash + liquidationValue(s, seat) < 0) {
+    s.game.pending = { kind: "broke", amount: -p.cash, toSeat, ...(bank ? { bank } : {}) };
+    log(s, "broke", `${p.name} เงินไม่พอ ต้องขายทรัพย์สิน${bank && bankRoom(s, seat) > 0 ? "หรือติดหนี้ธนาคาร" : ""} ${fmt(-p.cash)} บาท`, seat);
+    if (p.cash + liquidationValue(s, seat) + (bank ? bankRoom(s, seat) : 0) < 0) {
       bankrupt(s, seat);
     }
     return false;
   }
   return true;
+}
+
+/** How much more a player may owe the bank. */
+export function bankRoom(s: Snapshot, seat: number): number {
+  return Math.max(0, s.rules.maxBankDebt - s.players[seat].bankDebt);
 }
 
 function bankrupt(s: Snapshot, seat: number, why = "ล้มละลาย!") {
@@ -524,6 +535,7 @@ export function startGame(s: Snapshot) {
     p.skipTurns = 0;
     p.bankrupt = false;
     p.debt = 0;
+    p.bankDebt = 0;
   }
   s.props = {};
   log(s, "start", `เริ่มเกม! แต่ละคนได้เงิน ${fmt(s.rules.startingMoney)} บาท`);
@@ -665,6 +677,36 @@ export function payDebt(s: Snapshot, seat: number, amount?: number) {
   creditor.cash += amt;
   txn(s, seat, { type: "repay", amount: amt, from: seat, to: creditor.seat });
   log(s, "repay", `${p.name} ชำระหนี้ให้ ${creditor.name} ${fmt(amt)} บาท${p.debt > 0 ? ` (เหลือ ${fmt(p.debt)})` : " หมดหนี้แล้ว"}`, seat);
+}
+
+/** Short on a card or tax payment: put (as much as the cap allows of) the shortfall on the bank debt. */
+export function borrowBank(s: Snapshot, seat: number) {
+  requireTurn(s, seat, "broke");
+  const g = s.game;
+  if (g.pending?.kind !== "broke" || !g.pending.bank) throw new GameError("ติดหนี้ธนาคารได้เฉพาะค่าการ์ดและภาษี");
+  const p = s.players[seat];
+  const amt = Math.min(-p.cash, bankRoom(s, seat));
+  if (amt <= 0) throw new GameError(`ติดหนี้ธนาคารครบ ${fmt(s.rules.maxBankDebt)} บาทแล้ว`);
+  p.cash += amt;
+  p.bankDebt += amt;
+  txn(s, seat, { type: "borrow", amount: amt });
+  log(s, "bank_debt", `${p.name} ติดหนี้ธนาคาร ${fmt(amt)} บาท (รวมติด ${fmt(p.bankDebt)})`, seat);
+  afterSale(s, seat);
+}
+
+/** Repay (part of) the bank debt from cash. Allowed any time during the game. */
+export function payBankDebt(s: Snapshot, seat: number, amount?: number) {
+  if (s.game.status !== "playing") throw new GameError("เกมยังไม่เริ่ม");
+  begin(s);
+  const p = s.players[seat];
+  if (p.bankrupt) throw new GameError("คุณออกจากเกมแล้ว");
+  if (p.bankDebt <= 0) throw new GameError("ไม่มีหนี้ธนาคารค้าง");
+  const amt = Math.min(amount ?? p.bankDebt, p.bankDebt, p.cash);
+  if (amt <= 0) throw new GameError("เงินสดไม่พอ");
+  p.cash -= amt;
+  p.bankDebt -= amt;
+  txn(s, seat, { type: "bank_repay", amount: amt });
+  log(s, "repay", `${p.name} ชำระหนี้ธนาคาร ${fmt(amt)} บาท${p.bankDebt > 0 ? ` (เหลือ ${fmt(p.bankDebt)})` : " หมดหนี้แล้ว"}`, seat);
 }
 
 export function buy(s: Snapshot, seat: number, withHouse = false) {

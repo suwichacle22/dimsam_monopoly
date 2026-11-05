@@ -82,6 +82,7 @@ export const rulesFields = {
   landSellBackRatio: v.optional(v.number()),
   cardMovesCollectStart: v.boolean(),
   maxDebt: v.optional(v.number()),
+  maxBankDebt: v.optional(v.number()),
   gaugeEnabled: v.optional(v.boolean()),
   gaugeAccuracy: v.optional(v.number()),
   autoEndTurn: v.optional(v.boolean()),
@@ -104,7 +105,7 @@ export const pending = v.union(
   v.object({ kind: v.literal("card_roll"), effect: cardEffect, text: v.string() }),
   v.object({ kind: v.literal("rent"), tileIndex: v.number(), amount: v.number(), toSeat: v.number() }),
   v.object({ kind: v.literal("world_tour") }),
-  v.object({ kind: v.literal("broke"), amount: v.number(), toSeat: v.optional(v.number()) }),
+  v.object({ kind: v.literal("broke"), amount: v.number(), toSeat: v.optional(v.number()), bank: v.optional(v.boolean()) }),
 );
 
 export default defineSchema({
@@ -159,6 +160,8 @@ export default defineSchema({
     bankrupt: v.boolean(),
     /** rent owed to the other player ("ติดไว้ก่อน") */
     debt: v.optional(v.number()),
+    /** card/tax payments owed to the bank ("ติดหนี้ธนาคาร") */
+    bankDebt: v.optional(v.number()),
     bot: v.optional(v.boolean()),
     lastSeen: v.number(),
   })

@@ -25,8 +25,8 @@ function makeSnap(dice: number[] = [], overrides: Partial<E.Snapshot> = {}): E.S
       actionAt: 0,
     },
     players: [
-      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0 },
-      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0 },
+      { seat: 0, name: "A", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0, bankDebt: 0 },
+      { seat: 1, name: "B", cash: 0, position: 0, inJail: false, jailTurns: 0, jailLimit: 0, skipTurns: 0, bankrupt: false, debt: 0, bankDebt: 0 },
     ],
     props: {},
     events: [],
@@ -792,6 +792,67 @@ describe("tab between players (ติดไว้ก่อน)", () => {
     expect(s.game.phase).toBe("broke");
     expect(s.players[0].debt).toBe(0);
   });
+
+  test("short on a tax, the shortfall can go on the bank debt instead of selling", () => {
+    const s = makeSnap([2, 2]); // → tile 4 tax 1000
+    s.players[0].cash = 500;
+    E.roll(s, 0);
+    expect(s.game.pending).toMatchObject({ kind: "broke", bank: true });
+    E.borrowBank(s, 0);
+    expect(s.players[0].cash).toBe(0);
+    expect(s.players[0].bankDebt).toBe(500);
+    expect(s.game.phase).toBe("end");
+    expect(s.events.filter((e) => e.kind === "txn").map((e) => JSON.parse(e.text))).toEqual([{ type: "borrow", amount: 500 }]);
+  });
+
+  test("the bank debt is capped; past the cap you sell, and with nothing to sell you are out", () => {
+    const s = makeSnap([2, 2]);
+    s.players[0].cash = 500;
+    s.players[0].bankDebt = 2800; // room 200
+    s.props[6] = { ownerSeat: 0, houses: 0, landmark: false }; // sellBack 500
+    E.roll(s, 0);
+    E.borrowBank(s, 0);
+    expect(s.players[0].bankDebt).toBe(3000);
+    expect(s.players[0].cash).toBe(-300);
+    expect(s.game.phase).toBe("broke");
+    expect(() => E.borrowBank(s, 0)).toThrow(/ครบ/);
+    E.sellLand(s, 0, 6);
+    expect(s.game.phase).toBe("end");
+
+    const t = makeSnap([2, 2]);
+    t.players[0].cash = 500;
+    t.players[0].bankDebt = 2800;
+    E.roll(t, 0);
+    expect(t.players[0].bankrupt).toBe(true);
+  });
+
+  test("rent can never go on the bank debt", () => {
+    const s = makeSnap([1, 2]);
+    s.rules.maxDebt = 0;
+    s.players[0].cash = 100;
+    s.props[3] = { ownerSeat: 1, houses: 0, landmark: true }; // rent 4500
+    s.props[6] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[8] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[9] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[21] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[24] = { ownerSeat: 0, houses: 0, landmark: false };
+    s.props[39] = { ownerSeat: 0, houses: 0, landmark: false };
+    E.roll(s, 0);
+    expect(s.game.phase).toBe("broke");
+    expect(() => E.borrowBank(s, 0)).toThrow(/การ์ดและภาษี/);
+  });
+
+  test("the bank debt can be repaid any time, partly or in full", () => {
+    const s = makeSnap();
+    s.players[0].bankDebt = 2000;
+    s.players[0].cash = 5000;
+    E.payBankDebt(s, 0, 500);
+    expect(s.players[0].bankDebt).toBe(1500);
+    E.payBankDebt(s, 0);
+    expect(s.players[0].bankDebt).toBe(0);
+    expect(s.players[0].cash).toBe(3000);
+    expect(() => E.payBankDebt(s, 0)).toThrow(/ไม่มีหนี้/);
+  });
 });
 
 describe("aim gauge", () => {
@@ -915,6 +976,7 @@ describe("selling land to each other (ขายที่ดินให้กั
 
   test("in debt-only mode you cannot offer without a tab; off mode blocks it entirely", () => {
     const s = setup(0);
+    s.rules.tradeMode = "debt";
     expect(() => E.offerSale(s, 0, 6, 1000)).toThrow(/ติดหนี้/);
     s.rules.tradeMode = "always";
     E.offerSale(s, 0, 6, 1000);

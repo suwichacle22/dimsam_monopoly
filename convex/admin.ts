@@ -21,11 +21,13 @@ export const all = query({
     guard(password);
     const tiles = await ctx.db.query("tiles").withIndex("by_index").collect();
     const cards = await ctx.db.query("cards").collect();
-    const rules = await ctx.db.query("rules").first();
+    const doc = await ctx.db.query("rules").first();
+    // rules added after the doc was saved show their default; system fields stay out so the editor can save the draft back
+    const { _id, _creationTime, ...saved } = doc ?? { _id: undefined, _creationTime: undefined };
     return {
       tiles: tiles.length ? tiles : DEFAULT_TILES.map((t) => ({ ...t, _id: undefined })),
       cards: cards.sort((a, b) => a.deck.localeCompare(b.deck) || a.order - b.order),
-      rules: rules ?? DEFAULT_RULES,
+      rules: { ...DEFAULT_RULES, ...saved },
     };
   },
 });

@@ -102,6 +102,7 @@ export async function loadSnapshot(ctx: Ctx, game: Doc<"games">): Promise<Loaded
       skipTurns: p.skipTurns,
       bankrupt: p.bankrupt,
       debt: p.debt ?? 0,
+      bankDebt: p.bankDebt ?? 0,
     })),
     props: propMap,
     events: [],
@@ -147,6 +148,7 @@ export async function saveSnapshot(ctx: MutationCtx, loaded: Loaded) {
       skipTurns: ps.skipTurns,
       bankrupt: ps.bankrupt,
       debt: ps.debt,
+      bankDebt: ps.bankDebt,
     });
   }
   const seen = new Set<number>();

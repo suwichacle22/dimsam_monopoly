@@ -37,12 +37,28 @@ function useCountUp(value: number) {
   return printed;
 }
 
-function PlayerCard({ view, p, shown, onTile, onPayDebt }: { view: GameView; p: PlayerView; shown?: { cash: number; debt: number }; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
+function PlayerCard({
+  view,
+  p,
+  shown,
+  onTile,
+  onPayDebt,
+  onPayBankDebt,
+}: {
+  view: GameView;
+  p: PlayerView;
+  shown?: { cash: number; debt: number; bank: number };
+  onTile: (i: number) => void;
+  onPayDebt?: (amount?: number) => void;
+  onPayBankDebt?: (amount?: number) => void;
+}) {
   // while an action plays out the balances follow the animation, not the server
   const cash = shown?.cash ?? p.cash;
   const debt = shown?.debt ?? p.debt;
+  const bankDebt = shown?.bank ?? p.bankDebt;
   const float = useCashFloat(cash);
   const debtFloat = useCashFloat(debt);
+  const bankFloat = useCashFloat(bankDebt);
   const printedCash = useCountUp(cash);
   const isTurn = view.game.turn === p.seat && view.game.status === "playing";
   const owned = view.props.filter((x) => x.ownerSeat === p.seat).map((x) => view.tiles.find((t) => t.index === x.tileIndex)!);
@@ -88,7 +104,7 @@ function PlayerCard({ view, p, shown, onTile, onPayDebt }: { view: GameView; p: 
           ขายคืนได้ <b className="text-cocoa">{baht(w.sellable)}</b>
         </span>
         <span title="เงินสด + ทรัพย์สิน − หนี้" className="ml-auto">
-          รวม <b className="text-cocoa">{baht(cash + w.assets - debt)}</b>
+          รวม <b className="text-cocoa">{baht(cash + w.assets - debt - bankDebt)}</b>
         </span>
       </div>
       {debt > 0 && (
@@ -112,6 +128,33 @@ function PlayerCard({ view, p, shown, onTile, onPayDebt }: { view: GameView; p: 
                 ชำระบางส่วน
               </button>
               <button className="btn-secondary text-[11px] px-2 py-[2px]" disabled={p.cash <= 0} onClick={() => onPayDebt()}>
+                ชำระทั้งหมด
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+      {bankDebt > 0 && (
+        <div className="relative flex items-center gap-2 text-[12px] bg-[#fff1e6] dark:bg-[#3a2416] border border-[#f08a2b]/40 rounded-xl px-2 py-1">
+          <span className="text-[#b8621a]">
+            ติดหนี้ <b>ธนาคาร</b> <b className="tabular-nums">{baht(bankDebt)}</b>
+            {bankFloat && (
+              <span key={bankFloat.key} className="money-float absolute left-2 -top-2 font-bold text-[#b8621a] dark:text-[#ffb070]">
+                {bankFloat.diff > 0 ? "+" : ""}
+                {bankFloat.diff.toLocaleString()}
+              </span>
+            )}
+          </span>
+          {p.seat === view.me && onPayBankDebt && (
+            <span className="ml-auto flex gap-1">
+              <button className="btn-secondary text-[11px] px-2 py-[2px]" disabled={p.cash <= 0} onClick={() => {
+                const v = prompt(`ชำระเท่าไหร่? (ติดธนาคาร ${baht(p.bankDebt)} · เงินสด ${baht(p.cash)})`, String(Math.min(p.bankDebt, p.cash)));
+                const n = Number((v ?? "").replace(/[^\d]/g, ""));
+                if (n > 0) onPayBankDebt(n);
+              }}>
+                ชำระบางส่วน
+              </button>
+              <button className="btn-secondary text-[11px] px-2 py-[2px]" disabled={p.cash <= 0} onClick={() => onPayBankDebt()}>
                 ชำระทั้งหมด
               </button>
             </span>
@@ -148,11 +191,23 @@ function PlayerCard({ view, p, shown, onTile, onPayDebt }: { view: GameView; p: 
   );
 }
 
-export function PlayerPanel({ view, shown, onTile, onPayDebt }: { view: GameView; shown?: { cash: number[]; debt: number[] }; onTile: (i: number) => void; onPayDebt?: (amount?: number) => void }) {
+export function PlayerPanel({
+  view,
+  shown,
+  onTile,
+  onPayDebt,
+  onPayBankDebt,
+}: {
+  view: GameView;
+  shown?: { cash: number[]; debt: number[]; bank: number[] };
+  onTile: (i: number) => void;
+  onPayDebt?: (amount?: number) => void;
+  onPayBankDebt?: (amount?: number) => void;
+}) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
       {view.players.map((p) => (
-        <PlayerCard key={p.seat} view={view} p={p} shown={shown && { cash: shown.cash[p.seat], debt: shown.debt[p.seat] }} onTile={onTile} onPayDebt={onPayDebt} />
+        <PlayerCard key={p.seat} view={view} p={p} shown={shown && { cash: shown.cash[p.seat], debt: shown.debt[p.seat], bank: shown.bank[p.seat] }} onTile={onTile} onPayDebt={onPayDebt} onPayBankDebt={onPayBankDebt} />
       ))}
     </div>
   );
